@@ -1,0 +1,18 @@
+{
+    "baseline": {
+        "holdout_accuracy": 0.9986702127659575,
+        "holdout_precision": 1.0,
+        "holdout_recall": 0.9,
+        "holdout_f1": 0.9473684210526316,
+        "holdout_roc_auc": 0.9998652291105121,
+        "cv_mean_f1": 0.9043018419489007
+    },
+    "proxy": {
+        "holdout_accuracy": 0.9893617021276596,
+        "holdout_precision": 0.5833333333333334,
+        "holdout_recall": 0.7,
+        "holdout_f1": 0.6363636363636365,
+        "holdout_roc_auc": 0.9890161725067386,
+        "cv_mean_f1": 0.5376623376623377
+    }
+}
