@@ -141,8 +141,6 @@ ExoLife/
 │       ├── cross_validation_results.csv
 │       └── feature_importance_comparison.csv
 
-└── assets/
-    └── screenshots/
 ```
 
 ---
