@@ -45,13 +45,38 @@ st.markdown("""
         border-left: 5px solid #1E90FF;
         margin-bottom: 1rem;
     }
-    .leakage-warning {
-        background-color: #3b1e1e;
+    .science-note {
+        background-color: #1e2d3b;
         padding: 1.5rem;
         border-radius: 10px;
-        border-left: 5px solid #ff4b4b;
-        color: #ffcccc;
+        border-left: 5px solid #38bdf8;
+        color: #cbd5e1;
         margin-bottom: 1rem;
+    }
+    .accuracy-note {
+        background-color: #1e293b;
+        padding: 1.2rem;
+        border-radius: 10px;
+        border-left: 5px solid #fbbf24;
+        color: #fef3c7;
+        margin-bottom: 1rem;
+    }
+    .dataset-stat {
+        background-color: #0f172a;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        border: 1px solid #1e3a5f;
+        text-align: center;
+    }
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #38bdf8;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        margin-top: 0.2rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -67,7 +92,7 @@ st.sidebar.markdown("### 🛠️ Configuration")
 model_mode_display = st.sidebar.radio(
     "Select Model Mode",
     [
-        "Enhanced Habitability Model (All Features)",
+        "Baseline Model (All Features)",
         "Physics-Informed Proxy Model"
     ]
 )
@@ -78,29 +103,33 @@ st.sidebar.markdown("---")
 # Planetary Presets definition
 presets = {
     "Custom (Manual Input)": None,
-    "Earth (Habitable Baseline)": {
+    # --- Habitable Candidates ---
+    "🌍 Earth (Habitable Baseline)": {
         "pl_rade": 1.0, "pl_bmasse": 1.0, "pl_orbper": 365.25, "pl_eqt": 288.0, "pl_insol": 1.0,
         "pl_orbeccen": 0.0167, "st_teff": 5778.0, "st_rad": 1.0, "st_mass": 1.0, "st_met": 0.0, "sy_dist": 0.0
     },
-    "Kepler-22b (Super-Earth candidate)": {
+    "🌍 Kepler-22b (Super-Earth Candidate)": {
         "pl_rade": 2.4, "pl_bmasse": 8.3, "pl_orbper": 289.86, "pl_eqt": 262.0, "pl_insol": 1.1,
         "pl_orbeccen": 0.0, "st_teff": 5518.0, "st_rad": 0.989, "st_mass": 0.97, "st_met": -0.03, "sy_dist": 195.0
     },
-    "Kepler-186f (Earth-sized HZ planet)": {
+    "🌍 Kepler-186f (Earth-Sized HZ Planet)": {
         "pl_rade": 1.17, "pl_bmasse": 1.4, "pl_orbper": 129.9, "pl_eqt": 188.0, "pl_insol": 0.32,
         "pl_orbeccen": 0.04, "st_teff": 3755.0, "st_rad": 0.52, "st_mass": 0.48, "st_met": -0.28, "sy_dist": 179.0
     },
-    "Mars (Cold Rocky Desert)": {
+    # --- Non-Habitable Examples ---
+    "🔥 Mars (Cold Rocky Desert)": {
         "pl_rade": 0.53, "pl_bmasse": 0.11, "pl_orbper": 687.0, "pl_eqt": 210.0, "pl_insol": 0.43,
         "pl_orbeccen": 0.0934, "st_teff": 5778.0, "st_rad": 1.0, "st_mass": 1.0, "st_met": 0.0, "sy_dist": 0.0
     },
-    "Kepler-10b (Lava World)": {
+    "🔥 Kepler-10b (Lava World)": {
         "pl_rade": 1.47, "pl_bmasse": 4.6, "pl_orbper": 0.84, "pl_eqt": 2130.0, "pl_insol": 3560.0,
         "pl_orbeccen": 0.0, "st_teff": 5627.0, "st_rad": 1.06, "st_mass": 0.91, "st_met": -0.15, "sy_dist": 186.0
     }
 }
 
-selected_preset = st.sidebar.selectbox("🚀 Load Exoplanet Preset", list(presets.keys()))
+st.sidebar.markdown("**🌍 Habitable Candidates:** Earth, Kepler-22b, Kepler-186f")
+st.sidebar.markdown("**🔥 Non-Habitable Examples:** Mars, Kepler-10b")
+selected_preset = st.sidebar.selectbox("Load Exoplanet Preset", list(presets.keys()))
 preset_data = presets[selected_preset]
 
 def get_val(key, default):
@@ -135,7 +164,7 @@ with tab1:
     proxy_disabled = (model_mode == "proxy")
     
     if proxy_disabled:
-        st.info("💡 **Proxy Model Active**: Direct-rule boundary features (`pl_rade`, `pl_eqt`, and `pl_insol`) are automatically disabled and ignored. Predictions will be generated using only secondary physical proxies.")
+        st.info("💡 **Physics-Informed Proxy Model Active**: Planet Radius, Equilibrium Temperature, and Insolation Flux are not used by this model. Predictions are generated exclusively from secondary orbital and stellar properties.")
         
     with col1:
         st.markdown("#### 🌍 Planetary Properties")
@@ -214,9 +243,23 @@ with tab1:
             
         with res_col2:
             st.write("### 📏 Parameter Summary")
+            # Human-readable labels for all model features
+            FEATURE_LABELS = {
+                "pl_rade":     "Planet Radius (Earth Radii)",
+                "pl_bmasse":   "Planet Mass (Earth Masses)",
+                "pl_orbper":   "Orbital Period (Days)",
+                "pl_eqt":      "Equilibrium Temperature (K)",
+                "pl_insol":    "Insolation Flux (Earth Units)",
+                "pl_orbeccen": "Orbital Eccentricity",
+                "st_teff":     "Stellar Temperature (K)",
+                "st_rad":      "Stellar Radius (Solar Radii)",
+                "st_mass":     "Stellar Mass (Solar Masses)",
+                "st_met":      "Stellar Metallicity (dex)",
+                "sy_dist":     "System Distance (Parsecs)"
+            }
             features_to_show = PROXY_FEATURES if model_mode == "proxy" else BASELINE_FEATURES
             summary_df = pd.DataFrame({
-                "Feature Description": [f for f in features_to_show],
+                "Parameter": [FEATURE_LABELS.get(f, f) for f in features_to_show],
                 "Input Value": [inputs[f] for f in features_to_show]
             })
             st.dataframe(summary_df, use_container_width=True)
@@ -237,7 +280,7 @@ with tab2:
         # Structure side-by-side comparative dataframe
         metrics_df = pd.DataFrame({
             "Evaluation Metric": ["Accuracy", "Precision", "Recall", "F1 Score", "ROC-AUC", "Mean CV F1 Score"],
-            "Enhanced Habitability Model (All Features)": [
+            "Baseline Model (All Features)": [
                 f"{metrics['baseline']['holdout_accuracy']*100:.2f}%",
                 f"{metrics['baseline']['holdout_precision']*100:.2f}%",
                 f"{metrics['baseline']['holdout_recall']*100:.2f}%",
@@ -254,18 +297,27 @@ with tab2:
                 f"{metrics['proxy']['cv_mean_f1']*100:.2f}%"
             ]
         })
-        
+
+        # Why accuracy is misleading card
+        st.markdown("""
+        <div class='accuracy-note'>
+            <b>⚠️ Why Accuracy Is Misleading Here</b><br>
+            The dataset is <b>98.7% non-habitable</b>. A model that predicts every planet as uninhabitable would still achieve ~98.7% accuracy — without identifying a single habitable candidate.
+            <b>F1 Score</b> (harmonic mean of Precision and Recall) and <b>Recall</b> are the primary metrics because they directly measure how well each model finds the rare habitable planets.
+        </div>
+        """, unsafe_allow_html=True)
+
         col_m1, col_m2 = st.columns([2, 1])
         with col_m1:
-            st.write("#### 📈 Shared holdout Evaluation metrics")
+            st.write("#### 📈 Holdout Evaluation Metrics")
             st.table(metrics_df)
         with col_m2:
-            st.write("#### ℹ️ Target Leakage Warning")
+            st.write("#### 🔬 Scientific Modeling Note")
             st.markdown("""
-            <div class='leakage-warning'>
-                <h5>⚠️ Target Leakage Alert</h5>
-                <p>The <b>Enhanced Habitability Model</b> achieves a nearly perfect F1 score because it has direct access to the 3 features that mathematically define the label. It merely memorizes the rectangular cuts of the definition.</p>
-                <p>The <b>Physics-Informed Proxy Model</b> is forced to predict habitability using only secondary features. Its performance represents an authentic machine learning challenge, demonstrating genuine physical mapping.</p>
+            <div class='science-note'>
+                <h5>🔬 Scientific Modeling Note</h5>
+                <p>The <b>Baseline Model</b> includes variables that directly participate in label generation. As a result, it achieves extremely high performance by reconstructing the habitability rules.</p>
+                <p>The <b>Physics-Informed Proxy Model</b> excludes these variables and therefore represents a more realistic predictive task, requiring the model to infer the Habitable Zone from secondary physical properties.</p>
             </div>
             """, unsafe_allow_html=True)
             
@@ -279,14 +331,14 @@ with tab2:
         cm_path_proxy = get_absolute_path("outputs/evaluation/confusion_matrix_proxy.png")
         
         with col_cm1:
-            st.write("**Model A: Baseline (Leaky)**")
+            st.write("**Baseline Model**")
             if os.path.exists(cm_path_base):
                 st.image(cm_path_base, use_container_width=True)
             else:
                 st.info("Baseline confusion matrix plot not found.")
-                
+
         with col_cm2:
-            st.write("**Model B: Proxy (Physics-Based)**")
+            st.write("**Physics-Informed Proxy Model**")
             if os.path.exists(cm_path_proxy):
                 st.image(cm_path_proxy, use_container_width=True)
             else:
@@ -299,31 +351,41 @@ with tab2:
 # =====================================================================
 with tab3:
     st.markdown("### 🧠 Explainable AI (SHAP) Analysis")
-    st.write("SHAP (SHapley Additive exPlanations) values show how each input parameter pushes the model to predict habitability or non-habitability.")
-    
-    # waterfall prediction explanation
+    st.write("SHAP (SHapley Additive exPlanations) values reveal how much each input parameter contributes to the final habitability prediction.")
+
+    # SHAP interpretation guide
+    st.markdown("""
+    <div class='science-note'>
+        <b>How to Read SHAP Values</b><br>
+        &nbsp;• <b>Positive SHAP values</b> push the prediction <b>toward habitability</b> (increase the probability).<br>
+        &nbsp;• <b>Negative SHAP values</b> push the prediction <b>away from habitability</b> (decrease the probability).<br>
+        &nbsp;• The longer the bar, the greater the feature's influence on this specific prediction.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Waterfall prediction explanation
     st.write("#### 🔮 Active Prediction Explanation")
     if st.session_state.inputs is not None:
         try:
             active_inputs = st.session_state.inputs
             active_mode = st.session_state.model_mode
-            active_mode_display = "Enhanced Habitability Model" if active_mode == "baseline" else "Physics-Informed Proxy Model"
-            
-            st.info(f"Showing SHAP waterfall explanation for the last run exoplanet using the **{active_mode_display}**.")
-            
+            active_mode_display = "Baseline Model" if active_mode == "baseline" else "Physics-Informed Proxy Model"
+
+            st.info(f"Showing SHAP waterfall explanation for the last assessed exoplanet using the **{active_mode_display}**.")
+
             # Load selected pipeline model
             pipeline = load_model(active_mode)
             explain_prediction(active_inputs, pipeline)
-            
+
             # Downloadable explanation
             html_path = export_html_explanation(active_inputs, pipeline)
             if os.path.exists(html_path):
                 with open(html_path, 'rb') as f:
-                    st.download_button("📄 Download Local SHAP Report (HTML)", f, file_name=f"shap_explanation_{active_mode}.html")
+                    st.download_button("📄 Download SHAP Report (HTML)", f, file_name=f"shap_explanation_{active_mode}.html")
         except Exception as e:
             st.error(f"Error computing SHAP values: {e}")
     else:
-        st.info("No active prediction found. Please run a 'Habitability Assessment' in Tab 1 first to view its waterfall explanation.")
+        st.info("No prediction found yet. Run a Habitability Assessment in Tab 1 first to view its SHAP waterfall explanation.")
         
     st.markdown("---")
     
@@ -337,76 +399,101 @@ with tab3:
     summary_path_proxy = get_absolute_path("outputs/shap/shap_summary_proxy.png")
     
     with col_shap1:
-        st.write("**Model A: Baseline beeswarm**")
+        st.write("**Baseline Model — Global Feature Impact**")
         if os.path.exists(summary_path_base):
             st.image(summary_path_base, use_container_width=True)
-            st.write("Notice that `pl_insol` and `pl_eqt` dominate the baseline model's decision splits, capturing almost all of the SHAP impact.")
+            st.caption("Insolation Flux and Equilibrium Temperature dominate almost all decision weight — a signature of circular rule reconstruction.")
         else:
-            st.info("Baseline beeswarm plot not found.")
-            
+            st.info("Baseline beeswarm plot not found. Run `python -m src.explain` to generate.")
+
     with col_shap2:
-        st.write("**Model B: Proxy beeswarm**")
+        st.write("**Physics-Informed Proxy Model — Global Feature Impact**")
         if os.path.exists(summary_path_proxy):
             st.image(summary_path_proxy, use_container_width=True)
-            st.write("In the proxy model, importance is distributed physically: high stellar mass/radius and orbital period are required to map to the HZ.")
+            st.caption("Importance is distributed across Orbital Period, Stellar Radius, and Stellar Mass — reflecting genuine physical Habitable Zone reconstruction.")
         else:
-            st.info("Proxy beeswarm plot not found.")
+            st.info("Proxy beeswarm plot not found. Run `python -m src.explain` to generate.")
 
 # =====================================================================
 # TAB 4: ABOUT PROJECT
 # =====================================================================
 with tab4:
     st.markdown("### 📖 About the ExoLife Project")
-    
+
+    # Dataset Stats Cards
+    st.write("#### 🗄️ Dataset Overview")
+    ds1, ds2, ds3, ds4, ds5 = st.columns(5)
+    with ds1:
+        st.markdown("<div class='dataset-stat'><div class='stat-value'>NASA</div><div class='stat-label'>Dataset Source — Exoplanet Archive</div></div>", unsafe_allow_html=True)
+    with ds2:
+        st.markdown("<div class='dataset-stat'><div class='stat-value'>3,757</div><div class='stat-label'>Total Exoplanets (cleaned)</div></div>", unsafe_allow_html=True)
+    with ds3:
+        st.markdown("<div class='dataset-stat'><div class='stat-value'>49</div><div class='stat-label'>Potentially Habitable</div></div>", unsafe_allow_html=True)
+    with ds4:
+        st.markdown("<div class='dataset-stat'><div class='stat-value'>3,708</div><div class='stat-label'>Non-Habitable</div></div>", unsafe_allow_html=True)
+    with ds5:
+        st.markdown("<div class='dataset-stat'><div class='stat-value'>75.7 : 1</div><div class='stat-label'>Class Imbalance Ratio</div></div>", unsafe_allow_html=True)
+
+    st.markdown("---")
+
     st.markdown("""
     #### 🎯 Problem Statement
-    In exoplanetary research, determining which distant worlds could support surface liquid water is a major bottleneck. The NASA Exoplanet Catalog contains thousands of entries, but labels are highly imbalanced, and direct indicators of energy and temperature are frequently noisy or unobserved in early detection sweeps. 
-    
-    This project constructs a predictive model to identify habitable candidates and highlights a key Data Science challenge: **Target Leakage**.
-    
+    In exoplanetary research, determining which distant worlds could support surface liquid water is a major bottleneck. The NASA Exoplanet Catalog contains thousands of entries, but labels are highly imbalanced and direct indicators of energy flux and surface temperature are frequently noisy or unobserved in early detection surveys.
+
+    This project builds a predictive model to identify habitable candidates and addresses a critical Data Science modeling challenge: **Target Leakage**.
+
     #### 🪐 Habitability Criteria
-    Habitability labels are defined deterministically based on three conservative boundaries:
-    1.  **Planet Radius (`pl_rade`)**: $0.5 - 2.5$ Earth Radii (rocky worlds).
-    2.  **Equilibrium Temperature (`pl_eqt`)**: $160 - 330$ Kelvin (permits surface temperatures suitable for liquid water).
-    3.  **Insolation Flux (`pl_insol`)**: $0.3 - 1.8$ times the energy flux Earth receives from the Sun.
-    
-    #### ⚠️ The Target Leakage Dilemma & Proxy Solution
-    *   **The Trivial Model**: Standard modeling approaches train on all features. However, since the label is generated *from* Radius, Temperature, and Insolation, passing these three variables to a Random Forest causes **circular learning**. The model reaches ~100% accuracy by simply reconstructing the logic boundaries.
-    *   **The Physics-Informed Proxy**: To create an authentic predictive challenge, we exclude the defining variables. The model must predict habitability using only secondary features like stellar mass/temp, orbital period, and metallicity. This forces it to learn the underlying physics:
-        *   **Luminosity** is reconstructed via the Stefan-Boltzmann relation: $L \propto R_{\star}^2 \cdot T_{\star}^4$.
-        *   **Orbital distance** is reconstructed via Kepler's Third Law: $a \propto (P^2 M_{\star})^{1/3}$.
-        *   This showcases robust, mathematically validated machine learning.
+    Habitability labels are defined deterministically based on three conservative astrophysical boundaries:
+    1. **Planet Radius**: 0.5 – 2.5 Earth Radii (selects rocky, terrestrial worlds).
+    2. **Equilibrium Temperature**: 160 – 330 Kelvin (permits surface conditions for liquid water).
+    3. **Insolation Flux**: 0.3 – 1.8 times the solar flux Earth receives.
+
+    #### 🔬 The Leakage Discovery and Proxy Solution
+    - **Baseline Model**: Trained on all 11 features, including the three that directly define the habitability label. The model reconstructs simple threshold rules, reaching near-perfect accuracy without learning any real physical relationships.
+    - **Physics-Informed Proxy Model**: Excludes the three defining variables entirely. The model must predict habitability using only secondary orbital and stellar parameters, forcing it to approximate the underlying astrophysics:
+        - Stellar Luminosity reconstructed from Radius and Temperature via the Stefan-Boltzmann Law.
+        - Orbital distance reconstructed from Orbital Period and Stellar Mass via Kepler's Third Law.
     """)
-    
-    st.markdown("""
-    #### 🗺️ Project Workflow Diagram
-    """)
-    
+
+    st.write("#### 🗺️ Project Workflow")
     st.code("""
-    [ NASA Exoplanet Catalog ] ──> [ Preprocess: load_and_clean_data ]
-                                              │
-                      ┌───────────────────────┴───────────────────────┐
-                      ▼                                               ▼
-        [ Baseline Model: All Features ]               [ Proxy Model: 8 Features ]
-        - Trained on 11 parameters                      - Excludes: pl_rade, pl_eqt, pl_insol
-        - Learns simple threshold splits                - Learns HZ physics mapping
-        - Saved: model_baseline.pkl                     - Saved: model_proxy.pkl
-                      │                                               │
-                      └───────────────────────┬───────────────────────┘
-                                              ▼
-                             [ Shared Holdout Train/Test Split ]
-                                              │
-                       ┌──────────────────────┴──────────────────────┐
-                       ▼                                             ▼
-          [ confusion_matrix_baseline ]                 [ confusion_matrix_proxy ]
-                       │                                             │
-                       └──────────────────────┬──────────────────────┘
-                                              ▼
-                                 [ Streamlit UI Assessment ]
-                                 - Interactive exoplanet presets
-                                 - Live SHAP waterfall prediction explains
-                                 - Global beeswarm model summaries
+ [ NASA Exoplanet Archive ] --> [ preprocess.py: load_and_clean_data() ]
+                                            |
+                    +-----------------------+------------------------+
+                    v                                               v
+    [ Baseline Model (All 11 Features) ]       [ Proxy Model (8 Secondary Features) ]
+    - Learns threshold rule boundaries          - Learns HZ physics reconstruction
+    - model_baseline.pkl                        - model_proxy.pkl
+                    |                                               |
+                    +-----------------------+------------------------+
+                                           v
+                          [ Shared 80/20 Holdout Evaluation ]
+                          [ metrics_comparison.json ]
+                                           v
+                             [ Streamlit Multi-Tab Dashboard ]
+                             - Preset planet loader
+                             - Dual-model inference & probability score
+                             - SHAP waterfall + beeswarm analysis
     """, language="text")
-    
+
     st.markdown("---")
-    st.markdown("🚀 Built as a premium Machine Learning portfolio project to demonstrate clean data engineering, target leakage mitigation, and Explainable AI (XAI).")
+
+    # Footer
+    st.markdown("""
+    <div style='text-align:center; padding: 1.5rem 0 0.5rem 0;'>
+        <p style='color:#64748b; font-size:0.85rem;'>
+            <b style='color:#94a3b8;'>Built with:</b> Python &nbsp;|&nbsp; Scikit-Learn &nbsp;|&nbsp; SHAP &nbsp;|&nbsp; Streamlit &nbsp;|&nbsp; imbalanced-learn
+        </p>
+        <p style='color:#64748b; font-size:0.85rem;'>
+            <b style='color:#94a3b8;'>Dataset:</b> NASA Exoplanet Archive &nbsp;|&nbsp;
+            <b style='color:#94a3b8;'>Project Focus:</b> Explainable AI &amp; Physics-Informed Habitability Assessment
+        </p>
+        <p style='color:#475569; font-size:0.8rem; margin-top:0.5rem;'>
+            Made with by <a href='https://www.linkedin.com/in/shivangi-dubey-1783511a6/' target='_blank' style='color:#38bdf8;'>Shivangi Dubey</a>
+            &nbsp;&bull;&nbsp;
+            <a href='https://github.com/Shivangid2904/ExoLife-Exoplanet-Habitability-Assessment' target='_blank' style='color:#38bdf8;'>GitHub Repository</a>
+            &nbsp;&bull;&nbsp;
+            <a href='https://exoplanetarchive.ipac.caltech.edu/' target='_blank' style='color:#38bdf8;'>NASA Exoplanet Archive</a>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
