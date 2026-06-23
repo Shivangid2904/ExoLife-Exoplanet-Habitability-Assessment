@@ -239,11 +239,12 @@ if 'model_mode' not in st.session_state:
     st.session_state.model_mode = "baseline"
 
 # ----------------- APP TAB NAVIGATION -----------------
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🌌 Habitability Assessment",
     "📊 Model Comparison",
     "🧠 Explainability (SHAP)",
     "🔍 Exploratory Data Analysis",
+    "🏆 Model Benchmarking",
     "📖 About Project"
 ])
 
@@ -1405,9 +1406,277 @@ with tab4:
         st.warning("No exoplanet dataset available for analysis.")
 
 # =====================================================================
-# TAB 5: ABOUT PROJECT
+# TAB 5: MODEL BENCHMARKING & VALIDATION
 # =====================================================================
 with tab5:
+    st.markdown("### 🏆 Model Benchmarking & Validation Study")
+    st.write("Compare five classification models trained using SMOTE on the Physics-Informed Proxy feature set (`PROXY_FEATURES`). All models are evaluated under identical training/testing splits and cross-validation folds.")
+
+    # 1. Loading data
+    @st.cache_data
+    def load_benchmark_data():
+        bench_path = get_absolute_path("outputs/benchmark/benchmark_results.csv")
+        cv_path = get_absolute_path("outputs/benchmark/cross_validation_results.csv")
+        imp_path = get_absolute_path("outputs/benchmark/feature_importance_comparison.csv")
+        
+        bench_df = pd.read_csv(bench_path) if os.path.exists(bench_path) else None
+        cv_df = pd.read_csv(cv_path) if os.path.exists(cv_path) else None
+        imp_df = pd.read_csv(imp_path) if os.path.exists(imp_path) else None
+        
+        return bench_df, cv_df, imp_df
+
+    bench_df, cv_df, imp_df = load_benchmark_data()
+
+    if bench_df is not None and cv_df is not None and imp_df is not None:
+        # Programmatic Champion detection
+        best_acc_model = bench_df.loc[bench_df['Accuracy'].idxmax(), 'Model']
+        best_acc_val = bench_df['Accuracy'].max()
+
+        best_rec_model = bench_df.loc[bench_df['Recall'].idxmax(), 'Model']
+        best_rec_val = bench_df['Recall'].max()
+
+        best_f1_model = bench_df.loc[bench_df['F1'].idxmax(), 'Model']
+        best_f1_val = bench_df['F1'].max()
+
+        best_prauc_model = bench_df.loc[bench_df['PR-AUC'].idxmax(), 'Model']
+        best_prauc_val = bench_df['PR-AUC'].max()
+
+        # Section 1: Dataset Imbalance Callout
+        st.markdown("""
+        <div class='accuracy-note' style='margin-bottom: 1.5rem;'>
+            <h5>⚖️ Dealing with Severe Class Imbalance</h5>
+            <p>
+                The cleaned NASA Exoplanet dataset contains <b>3,757 planets</b>, of which only <b>49 are habitable</b> (3,708 non-habitable). 
+                This represents a severe class imbalance ratio of <b>75.7 : 1</b> (only <b>1.30%</b> habitable exoplanets).
+            </p>
+            <p>
+                <b>Why Accuracy is Misleading:</b> A naive classifier predicting "not habitable" for all planets would achieve a near-perfect accuracy of <b>98.7%</b>, while failing to detect a single habitable world.
+            </p>
+            <p>
+                <b>F1 Score, Recall, and PR-AUC:</b>
+                <ul>
+                    <li><b>Recall (Sensitivity):</b> Measures the percentage of actual habitable planets captured by the model (critical for not missing candidates).</li>
+                    <li><b>F1 Score:</b> Balanced harmonic mean of Precision and Recall.</li>
+                    <li><b>PR-AUC (Precision-Recall Area Under Curve):</b> The most robust performance metric for highly imbalanced screening tasks, evaluating the tradeoff across all threshold settings.</li>
+                </ul>
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Section 2: Champion Cards
+        st.write("#### 👑 Benchmarking Champions (Holdout Evaluation)")
+        cc1, cc2, cc3, cc4 = st.columns(4)
+        with cc1:
+            st.markdown(f"""
+            <div class='metric-card' style='border-left-color: #38bdf8;'>
+                <div style='font-size: 0.85rem; color: #94a3b8; font-weight: bold;'>🏆 BEST ACCURACY</div>
+                <div style='font-size: 1.8rem; font-weight: bold; color: #38bdf8; margin: 0.3rem 0;'>{best_acc_val*100:.2f}%</div>
+                <div style='font-size: 0.9rem; color: #cbd5e1;'>{best_acc_model}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with cc2:
+            st.markdown(f"""
+            <div class='metric-card' style='border-left-color: #a78bfa;'>
+                <div style='font-size: 0.85rem; color: #94a3b8; font-weight: bold;'>🏆 BEST RECALL</div>
+                <div style='font-size: 1.8rem; font-weight: bold; color: #a78bfa; margin: 0.3rem 0;'>{best_rec_val*100:.2f}%</div>
+                <div style='font-size: 0.9rem; color: #cbd5e1;'>{best_rec_model}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with cc3:
+            st.markdown(f"""
+            <div class='metric-card' style='border-left-color: #fbbf24;'>
+                <div style='font-size: 0.85rem; color: #94a3b8; font-weight: bold;'>🏆 BEST F1 SCORE</div>
+                <div style='font-size: 1.8rem; font-weight: bold; color: #fbbf24; margin: 0.3rem 0;'>{best_f1_val*100:.2f}%</div>
+                <div style='font-size: 0.9rem; color: #cbd5e1;'>{best_f1_model}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with cc4:
+            st.markdown(f"""
+            <div class='metric-card' style='border-left-color: #34d399;'>
+                <div style='font-size: 0.85rem; color: #94a3b8; font-weight: bold;'>🏆 BEST PR-AUC</div>
+                <div style='font-size: 1.8rem; font-weight: bold; color: #34d399; margin: 0.3rem 0;'>{best_prauc_val*100:.2f}%</div>
+                <div style='font-size: 0.9rem; color: #cbd5e1;'>{best_prauc_model}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Section 3: Metrics Leaderboard
+        st.write("#### 📊 Holdout Metrics Leaderboard")
+        st.caption("Evaluated on a shared 20% holdout split (752 planets) containing 10 habitable and 742 non-habitable planets. Best value per metric column is highlighted in green.")
+        
+        # Color highlight best values in column
+        metric_cols = ["Accuracy", "Precision", "Recall", "F1", "ROC-AUC", "PR-AUC"]
+        for col in metric_cols:
+            if col in bench_df.columns:
+                bench_df[col] = pd.to_numeric(bench_df[col])
+                
+        def style_metric(column):
+            is_max = column == column.max()
+            return ['background-color: #0f3d32; color: #4ade80; font-weight: bold;' if v else '' for v in is_max]
+            
+        leaderboard_styled = bench_df.style.apply(style_metric, subset=metric_cols)
+        st.dataframe(leaderboard_styled, use_container_width=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Section 4: Interactive Comparison Charts
+        st.write("#### 📈 Interactive Model Comparison")
+        selected_metric = st.selectbox("Select Evaluation Metric to Compare Graphically", ["F1", "Recall", "Precision", "Accuracy", "ROC-AUC", "PR-AUC"])
+        
+        fig = px.bar(
+            bench_df,
+            x="Model",
+            y=selected_metric,
+            color=selected_metric,
+            color_continuous_scale="Viridis",
+            labels={selected_metric: f"{selected_metric} Value", "Model": "Model Name"},
+            title=f"Comparison of Models: {selected_metric}"
+        )
+        fig.update_layout(template="plotly_dark", height=400)
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Section 5: Cross-Validation Summary
+        st.write("#### 🔄 Stratified 5-Fold Cross-Validation Summary")
+        st.caption("Performance metrics computed across Stratified 5-Fold Cross Validation. Metrics represent the mean performance across validation folds ± standard deviation (std). This represents each model's generalizability on unobserved data folds.")
+        
+        cv_display_df = pd.DataFrame({
+            "Model": cv_df["Model"],
+            "CV Accuracy": cv_df.apply(lambda r: f"{r['CV Accuracy Mean']:.4f} ± {r['CV Accuracy Std']:.4f}", axis=1),
+            "CV Precision": cv_df.apply(lambda r: f"{r['CV Precision Mean']:.4f} ± {r['CV Precision Std']:.4f}", axis=1),
+            "CV Recall": cv_df.apply(lambda r: f"{r['CV Recall Mean']:.4f} ± {r['CV Recall Std']:.4f}", axis=1),
+            "CV F1 Score": cv_df.apply(lambda r: f"{r['CV F1 Mean']:.4f} ± {r['CV F1 Std']:.4f}", axis=1)
+        })
+        st.table(cv_display_df)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Section 6: Confusion Matrix Viewer
+        st.write("#### 🗺️ Confusion Matrix & Screening Analysis")
+        model_to_view = st.selectbox("Select Model for Detailed Confusion Matrix Analysis", bench_df["Model"].tolist())
+        model_row = bench_df[bench_df["Model"] == model_to_view].iloc[0]
+        tp, tn, fp, fn = int(model_row["TP"]), int(model_row["TN"]), int(model_row["FP"]), int(model_row["FN"])
+
+        cm_matrix = [[tn, fp], [fn, tp]]
+        fig_cm = px.imshow(
+            cm_matrix,
+            text_auto=True,
+            labels=dict(x="Predicted", y="Actual", color="Count"),
+            x=["Non-Habitable (0)", "Habitable (1)"],
+            y=["Non-Habitable (0)", "Habitable (1)"],
+            color_continuous_scale="Blues",
+            title=f"Holdout Confusion Matrix: {model_to_view}"
+        )
+        fig_cm.update_layout(template="plotly_dark", width=420, height=340, coloraxis_showscale=False)
+
+        cm_col1, cm_col2 = st.columns([1, 1.2])
+        with cm_col1:
+            st.plotly_chart(fig_cm, use_container_width=True)
+        with cm_col2:
+            st.markdown(f"""
+            <div class='science-note' style='height: 100%; min-height: 250px;'>
+                <h5>🔬 Screening Insights for {model_to_view}</h5>
+                <p><b>True Positives (TP): {tp}</b> &nbsp;&bull;&nbsp; Habitable planets correctly identified as habitable.</p>
+                <p><b>False Positives (FP): {fp}</b> &nbsp;&bull;&nbsp; Non-habitable planets incorrectly classified as habitable (wasted follow-up observation resources).</p>
+                <p><b>False Negatives (FN): {fn}</b> &nbsp;&bull;&nbsp; Habitable planets incorrectly classified as non-habitable (missed opportunities).</p>
+                <p><b>True Negatives (TN): {tn}</b> &nbsp;&bull;&nbsp; Non-habitable planets correctly filtered out.</p>
+                <hr style='border: 0; border-top: 1px solid #3b82f6; margin: 0.8rem 0;'>
+                <p style='font-size: 0.9rem; line-height: 1.4; color: #e2e8f0;'>
+                    <b>Implications for Habitability Screening:</b> In astronomical screening campaigns, false negatives are critical as they lead to missing viable candidates. However, due to limited astronomical observation resources (e.g., James Webb Space Telescope schedule), false positives must be restricted. The optimal model must offer high <b>Recall</b> alongside reasonable <b>Precision</b> to balance these factors.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Section 7: Feature Importance Comparison
+        st.write("#### 🪵 Feature Importance Comparison")
+        st.caption("Compares feature weights and feature importances extracted across models (absolute values of coefficients for Logistic Regression, relative impurity importances for trees).")
+
+        imp_melted = imp_df.melt(
+            id_vars=["Feature", "Feature Label"],
+            value_vars=[c for c in imp_df.columns if c not in ["Feature", "Feature Label"]],
+            var_name="Model",
+            value_name="Importance"
+        )
+
+        fig_imp = px.bar(
+            imp_melted,
+            y="Feature Label",
+            x="Importance",
+            color="Model",
+            barmode="group",
+            orientation="h",
+            title="Comparison of Feature Importances & Model Weights",
+            labels={"Feature Label": "Feature Parameter", "Importance": "Relative Score / Magnitude"}
+        )
+        fig_imp.update_layout(template="plotly_dark", height=450, yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig_imp, use_container_width=True)
+
+        st.markdown("""
+        <div class='science-note'>
+            <b>💡 Common Important Features Insights:</b><br>
+            <ul>
+                <li><b>Stellar Radius (st_rad)</b> and <b>Stellar Effective Temperature (st_teff)</b> hold the highest feature weights across tree classifiers (Random Forest, XGBoost, Decision Tree). This matches astrophysical expectations because stellar radius and temperature reconstruct the host star's Luminosity.</li>
+                <li><b>Orbital Period (pl_orbper)</b> represents the next most critical parameter. This is consistent with Kepler's Third Law, which defines the orbital distance and planetary equilibrium temperature.</li>
+                <li><b>Stellar Mass (st_mass)</b> is heavily utilized by tree models but less so by Logistic Regression, which relies heavily on Planet Mass (pl_bmasse).</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Section 8: Deployment Recommendation & Trade-offs
+        st.write("#### 🚀 Deployment Recommendation & Model Trade-offs")
+        st.markdown("""
+        <div class='science-note' style='border-left-color: #10b981;'>
+            <h5>🏆 Selected Recommendation: XGBoost</h5>
+            <p>
+                Based on holdout results and cross-validation, <b>XGBoost</b> is the recommended model for deployment in this Physics-Informed Proxy scenario.
+            </p>
+            <p><b>Analysis of Model Trade-offs:</b></p>
+            <ul>
+                <li><b>XGBoost (Optimal):</b> Achieves the highest overall <b>PR-AUC (0.7732)</b> and holdout precision (0.75). Crucially, during Stratified 5-Fold Cross-Validation, XGBoost records the highest stability: <b>CV F1 Score of 0.5858 ± 0.0435</b> and <b>CV Recall of 0.7356 ± 0.0997</b>. It offers the most generalizable, low-variance performance.</li>
+                <li><b>Decision Tree (Overfitting):</b> While achieving the highest holdout F1 score (0.7000), it exhibits extreme variance in cross-validation (CV F1 drops to 0.4813 ± 0.1127, CV Recall 0.5733 ± 0.1420), indicating overfitting to the holdout set.</li>
+                <li><b>Random Forest / Proxy RF:</b> Highly robust (CV F1 of 0.5377 ± 0.1390), but shows slightly higher variance and lower recall compared to XGBoost.</li>
+                <li><b>Logistic Regression (High Sensitivity, Low Precision):</b> Achieves a perfect Recall of 1.0000 but incurs 62 false positives (Precision 0.1389). Because of SMOTE oversampling, it over-predicts habitability, rendering it impractical for targeted follow-up observations.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Section 9: SMOTE Disclosure
+        st.write("#### ⚙️ Class Imbalance Treatment Disclosure (SMOTE)")
+        st.markdown("""
+        <div class='science-note' style='border-left-color: #f59e0b;'>
+            <h5>⚙️ SMOTE Oversampling Disclosure</h5>
+            <p>
+                All benchmarked pipelines utilize <b>SMOTE (Synthetic Minority Over-sampling Technique)</b> applied strictly inside cross-validation splits and training folds.
+            </p>
+            <p><b>Benefits of SMOTE:</b></p>
+            <p>
+                SMOTE synthesizes minority class exoplanets (habitable candidates) using k-nearest neighbors in the proxy feature space. 
+                Without SMOTE, the extreme imbalance (98.7% majority class) causes models to simply predict "not habitable" everywhere. SMOTE forces the classifiers to learn the actual physical boundary lines.
+            </p>
+            <p><b>Limitations of SMOTE:</b></p>
+            <p>
+                Because SMOTE generates points synthetically between existing minority points, it assumes linear interpolations in parameter space. 
+                In astronomy, this can produce synthetic exoplanets that violate physical constraints (e.g., mass-radius relationships or orbital stability). 
+                To mitigate this, models are evaluated on a <b>pure empirical holdout set</b> where no synthetic data points are present, ensuring validation metrics represent real-world generalization.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    else:
+        st.warning("⚠️ Benchmarking outputs not found. Ensure `benchmark_results.csv`, `cross_validation_results.csv`, and `feature_importance_comparison.csv` exist inside `outputs/benchmark/`.")
+
+# =====================================================================
+# TAB 6: ABOUT PROJECT
+# =====================================================================
+with tab6:
     st.markdown("### 📖 About the ExoLife Project")
 
     # Dataset Stats Cards
