@@ -213,22 +213,25 @@ Cross-Validation Results:
 
 ### Habitability Assessment
 
-<img width="957" height="479" alt="Habitability_assessment" src="https://github.com/user-attachments/assets/Habitability_assessment" />
+<img width="957" height="479" alt="Screenshot 2026-06-23 154601" src="https://github.com/user-attachments/assets/a70de6f9-e96d-4d85-80f0-34966e5c9cc5" />
 
 
 ### Explainable AI (SHAP)
 
-<img width="957" height="472" alt="Explainable_ai" src="https://github.com/user-attachments/assets/Explainable_ai" />
+<img width="957" height="472" alt="Screenshot 2026-06-23 154634" src="https://github.com/user-attachments/assets/7b7f8b13-a29a-4416-a011-0c3a126b8321" />
+
 
 
 ### Exploratory Data Analysis
 
-<img width="957" height="467" alt="EDA" src="https://github.com/user-attachments/assets/eda" />
+<img width="957" height="467" alt="Screenshot 2026-06-23 154745" src="https://github.com/user-attachments/assets/3f4e7eed-5b00-44b8-b798-664dd682c3e0" />
+
 
 
 ### Model Benchmarking
 
-<img width="959" height="460" alt="Model_Benchmarking" src="https://github.com/user-attachments/assets/Model_Benchmarking" />
+<img width="959" height="460" alt="Screenshot 2026-06-23 154814" src="https://github.com/user-attachments/assets/0d3a3253-c33f-475c-b36b-b34d4c9b8005" />
+
 
 
 ---
