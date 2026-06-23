@@ -7,3 +7,6 @@ scikit-learn
 shap
 streamlit
 plotly
+seaborn
+scipy
+xgboost
