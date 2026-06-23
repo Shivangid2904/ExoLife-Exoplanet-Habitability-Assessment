@@ -120,7 +120,6 @@ ExoLife/
 ├── data/
 │   ├── raw/
 │   │   └── exoplanetdata.csv
-│   └── processed/
 
 ├── models/
 │   ├── model_baseline.pkl
@@ -130,7 +129,6 @@ ExoLife/
 │   └── feature_importance_proxy.csv
 
 ├── outputs/
-│   ├── eda/
 │   ├── evaluation/
 │   │   ├── confusion_matrix_baseline.png
 │   │   └── confusion_matrix_proxy.png
@@ -215,19 +213,23 @@ Cross-Validation Results:
 
 ### Habitability Assessment
 
-[Insert Screenshot]
+<img width="957" height="479" alt="Habitability_assessment" src="https://github.com/user-attachments/assets/Habitability_assessment" />
+
 
 ### Explainable AI (SHAP)
 
-[Insert Screenshot]
+<img width="957" height="472" alt="Explainable_ai" src="https://github.com/user-attachments/assets/Explainable_ai" />
+
 
 ### Exploratory Data Analysis
 
-[Insert Screenshot]
+<img width="957" height="467" alt="EDA" src="https://github.com/user-attachments/assets/eda" />
+
 
 ### Model Benchmarking
 
-[Insert Screenshot]
+<img width="959" height="460" alt="Model_Benchmarking" src="https://github.com/user-attachments/assets/Model_Benchmarking" />
+
 
 ---
 
