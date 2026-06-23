@@ -6,3 +6,4 @@ pandas
 scikit-learn
 shap
 streamlit
+plotly

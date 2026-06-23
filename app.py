@@ -5,10 +5,38 @@ import json
 import os
 import io
 import matplotlib.pyplot as plt
+import plotly.express as px
+import scipy.stats as stats
 
 from src.predict import predict, predict_proba, load_model
 from src.explain import explain_prediction, export_html_explanation
 from src.preprocess import BASELINE_FEATURES, PROXY_FEATURES
+
+# Define global feature labels mapping
+FEATURE_LABELS = {
+    "pl_rade":     "Planet Radius (Earth Radii)",
+    "pl_bmasse":   "Planet Mass (Earth Masses)",
+    "pl_orbper":   "Orbital Period (Days)",
+    "pl_eqt":      "Equilibrium Temperature (K)",
+    "pl_insol":    "Insolation Flux (Earth Units)",
+    "pl_orbeccen": "Orbital Eccentricity",
+    "st_teff":     "Stellar Temperature (K)",
+    "st_rad":      "Stellar Radius (Solar Radii)",
+    "st_mass":     "Stellar Mass (Solar Masses)",
+    "st_met":      "Stellar Metallicity (dex)",
+    "sy_dist":     "System Distance (Parsecs)"
+}
+
+SUPPORTED_EDA_FEATURES = BASELINE_FEATURES
+
+@st.cache_data
+def get_cleaned_data():
+    from src.preprocess import load_and_clean_data
+    return load_and_clean_data()
+
+@st.cache_data
+def get_correlation_matrix(df, features):
+    return df[features].corr()
 
 # Resolve base directories path-independently
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -144,10 +172,11 @@ if 'model_mode' not in st.session_state:
     st.session_state.model_mode = "baseline"
 
 # ----------------- APP TAB NAVIGATION -----------------
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🌌 Habitability Assessment",
     "📊 Model Comparison",
     "🧠 Explainability (SHAP)",
+    "🔍 Exploratory Data Analysis",
     "📖 About Project"
 ])
 
@@ -243,20 +272,6 @@ with tab1:
             
         with res_col2:
             st.write("### 📏 Parameter Summary")
-            # Human-readable labels for all model features
-            FEATURE_LABELS = {
-                "pl_rade":     "Planet Radius (Earth Radii)",
-                "pl_bmasse":   "Planet Mass (Earth Masses)",
-                "pl_orbper":   "Orbital Period (Days)",
-                "pl_eqt":      "Equilibrium Temperature (K)",
-                "pl_insol":    "Insolation Flux (Earth Units)",
-                "pl_orbeccen": "Orbital Eccentricity",
-                "st_teff":     "Stellar Temperature (K)",
-                "st_rad":      "Stellar Radius (Solar Radii)",
-                "st_mass":     "Stellar Mass (Solar Masses)",
-                "st_met":      "Stellar Metallicity (dex)",
-                "sy_dist":     "System Distance (Parsecs)"
-            }
             features_to_show = PROXY_FEATURES if model_mode == "proxy" else BASELINE_FEATURES
             summary_df = pd.DataFrame({
                 "Parameter": [FEATURE_LABELS.get(f, f) for f in features_to_show],
@@ -415,24 +430,548 @@ with tab3:
             st.info("Proxy beeswarm plot not found. Run `python -m src.explain` to generate.")
 
 # =====================================================================
-# TAB 4: ABOUT PROJECT
+# TAB 4: EXPLORATORY DATA ANALYSIS (EDA) DASHBOARD
 # =====================================================================
 with tab4:
+    st.markdown("### 🔍 Exploratory Data Analysis (EDA)")
+    st.write("Explore the physical, orbital, and stellar characteristics of the exoplanet population from the NASA Exoplanet Archive.")
+    
+    # Load cached dataset
+    try:
+        df_eda = get_cleaned_data()
+    except Exception as e:
+        st.error(f"Error loading exoplanet dataset: {e}")
+        df_eda = pd.DataFrame()
+        
+    if not df_eda.empty:
+        # Define features and helper mapping
+        df_plot = df_eda.copy()
+        df_plot['Habitability'] = df_plot['is_habitable'].map({0: "Non-Habitable", 1: "Habitable"})
+        
+        # ----------------- Section 1: Dataset Overview -----------------
+        st.write("#### 1. Dataset Overview & Imbalance")
+        
+        total_p = len(df_eda)
+        hab_p = int((df_eda['is_habitable'] == 1).sum())
+        non_hab_p = int((df_eda['is_habitable'] == 0).sum())
+        ratio_p = non_hab_p / hab_p if hab_p > 0 else 0
+        
+        col_ov1, col_ov2 = st.columns([1, 1])
+        
+        with col_ov1:
+            st.markdown(f"""
+            <div style='display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;'>
+                <div class='dataset-stat'>
+                    <div class='stat-value'>{total_p:,}</div>
+                    <div class='stat-label'>Total Planets</div>
+                </div>
+                <div class='dataset-stat'>
+                    <div class='stat-value'>{hab_p}</div>
+                    <div class='stat-label'>Habitable (Class 1)</div>
+                </div>
+                <div class='dataset-stat'>
+                    <div class='stat-value'>{non_hab_p:,}</div>
+                    <div class='stat-label'>Non-Habitable (Class 0)</div>
+                </div>
+                <div class='dataset-stat'>
+                    <div class='stat-value'>{ratio_p:.1f}:1</div>
+                    <div class='stat-label'>Imbalance Ratio</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Text explanation
+            st.markdown(f"""
+            <div class='accuracy-note' style='margin-top: 1rem;'>
+                <b>🔬 How imbalanced is the dataset?</b><br>
+                The dataset is extremely imbalanced with a ratio of <b>{ratio_p:.1f} to 1</b> non-habitable planets for every habitable one. 
+                Only <b>{hab_p / total_p * 100:.2f}%</b> of the planets in this catalog satisfy the physical requirements of rocky structure, moderate equilibrium temperature, and appropriate insolation flux. This extreme skew illustrates why evaluation metrics like F1-Score and Recall are critical.
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_ov2:
+            # Bar chart of class distribution
+            fig_ov = px.bar(
+                x=["Non-Habitable", "Habitable"],
+                y=[non_hab_p, hab_p],
+                labels={"x": "Class", "y": "Planet Count"},
+                color=["Non-Habitable", "Habitable"],
+                color_discrete_map={"Non-Habitable": "#ef4444", "Habitable": "#10b981"},
+                title="Exoplanet Distribution Breakdown",
+                text=[f"{non_hab_p:,} ({non_hab_p/total_p*100:.2f}%)", f"{hab_p} ({hab_p/total_p*100:.2f}%)"]
+            )
+            fig_ov.update_traces(textposition='outside')
+            fig_ov.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font_color="#f8fafc",
+                showlegend=False,
+                height=300,
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
+            st.plotly_chart(fig_ov, use_container_width=True)
+            
+        st.markdown("---")
+        
+        # ----------------- Section 2: Feature Distribution Explorer -----------------
+        st.write("#### 2. Feature Distribution Explorer")
+        st.write("Inspect individual planetary and stellar characteristics to understand their mathematical distributions and statistical properties.")
+        
+        col_dist1, col_dist2 = st.columns([1, 2])
+        
+        with col_dist1:
+            selected_dist_feat = st.selectbox(
+                "Select Feature to Investigate",
+                SUPPORTED_EDA_FEATURES,
+                format_func=lambda x: FEATURE_LABELS.get(x, x),
+                key="dist_selector"
+            )
+            
+            # Log scale toggle
+            log_scale_dist = st.checkbox("Log-scale X-Axis", value=False, key="dist_log_toggle")
+            
+            # Compute stats
+            feat_vals = df_eda[selected_dist_feat].dropna()
+            f_mean = feat_vals.mean()
+            f_median = feat_vals.median()
+            f_std = feat_vals.std()
+            f_min = feat_vals.min()
+            f_max = feat_vals.max()
+            
+            st.markdown(f"""
+            <div class='metric-card'>
+                <h5>📊 Descriptive Statistics</h5>
+                <table style='width:100%; border-collapse: collapse;'>
+                    <tr><td style='padding: 4px 0; color:#94a3b8;'>Mean</td><td style='text-align:right; font-weight:bold; color:#38bdf8;'>{f_mean:.4f}</td></tr>
+                    <tr><td style='padding: 4px 0; color:#94a3b8;'>Median</td><td style='text-align:right; font-weight:bold; color:#38bdf8;'>{f_median:.4f}</td></tr>
+                    <tr><td style='padding: 4px 0; color:#94a3b8;'>Std Dev</td><td style='text-align:right; font-weight:bold; color:#38bdf8;'>{f_std:.4f}</td></tr>
+                    <tr><td style='padding: 4px 0; color:#94a3b8;'>Minimum</td><td style='text-align:right; font-weight:bold; color:#38bdf8;'>{f_min:.4f}</td></tr>
+                    <tr><td style='padding: 4px 0; color:#94a3b8;'>Maximum</td><td style='text-align:right; font-weight:bold; color:#38bdf8;'>{f_max:.4f}</td></tr>
+                </table>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_dist2:
+            # Determine if KDE is appropriate (avoid on sparse or extremely low variance)
+            is_kde_appropriate = len(feat_vals.unique()) >= 10 and f_std > 0.001
+            
+            # Set up Plotly histogram
+            nbins = 50
+            if log_scale_dist:
+                hist_vals = feat_vals[feat_vals > 0]
+                fig_dist = px.histogram(
+                    x=hist_vals,
+                    nbins=nbins,
+                    title=f"Log-Distribution of {FEATURE_LABELS[selected_dist_feat]}",
+                    labels={"x": FEATURE_LABELS[selected_dist_feat]},
+                    color_discrete_sequence=["#38bdf8"]
+                )
+                fig_dist.update_layout(xaxis_type="log")
+            else:
+                fig_dist = px.histogram(
+                    x=feat_vals,
+                    histnorm="probability density" if is_kde_appropriate else None,
+                    nbins=nbins,
+                    title=f"Distribution of {FEATURE_LABELS[selected_dist_feat]}",
+                    labels={"x": FEATURE_LABELS[selected_dist_feat], "y": "Density" if is_kde_appropriate else "Count"},
+                    color_discrete_sequence=["#38bdf8"]
+                )
+                
+                if is_kde_appropriate:
+                    try:
+                        kde = stats.gaussian_kde(feat_vals)
+                        x_grid = np.linspace(f_min, f_max, 300)
+                        y_kde = kde(x_grid)
+                        fig_dist.add_scatter(
+                            x=x_grid,
+                            y=y_kde,
+                            mode="lines",
+                            name="KDE Curve",
+                            line=dict(color="#f43f5e", width=2.5)
+                        )
+                    except Exception:
+                        pass
+                        
+            fig_dist.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font_color="#f8fafc",
+                height=320,
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
+            st.plotly_chart(fig_dist, use_container_width=True)
+            
+        st.markdown("---")
+        
+        # ----------------- Section 3: Habitability Comparison -----------------
+        st.write("#### 3. Habitability Comparison")
+        st.write("Analyze how various parameters differ between habitable and non-habitable worlds to uncover key physical separations.")
+        
+        selected_comp_feat = st.selectbox(
+            "Select Feature to Compare",
+            SUPPORTED_EDA_FEATURES,
+            format_func=lambda x: FEATURE_LABELS.get(x, x),
+            key="comp_selector"
+        )
+        
+        # Split data
+        hab_vals = df_eda[df_eda['is_habitable'] == 1][selected_comp_feat].dropna()
+        non_hab_vals = df_eda[df_eda['is_habitable'] == 0][selected_comp_feat].dropna()
+        
+        comp_tab1, comp_tab2, comp_tab3 = st.tabs([
+            "📈 Overlapping Distributions",
+            "📦 Box Plot",
+            "🎻 Violin Plot"
+        ])
+        
+        interpretations = {
+            "pl_rade": "<b>Planet Radius</b> is a core defining metric of rocky planets. Potentially habitable candidates are tightly constrained between 0.5 and 2.5 Earth Radii. Planets exceeding 2.5 Earth Radii accumulate heavy hydrogen/helium envelopes, turning into volatile-rich Mini-Neptunes or Gas Giants without a solid surface, while planets smaller than 0.5 Earth Radii have insufficient gravity to retain habitable atmospheres.",
+            "pl_bmasse": "Although <b>Planet Mass</b> is not directly locked in the habitability label, it displays a strong separation. Habitable candidates reside in the lower mass spectrum (typically under 10 Earth masses), which corresponds to rocky super-Earths and Earth-analogs. Extremely massive planets become gas giants, retaining thick envelopes that lead to immense pressure and temperatures hostile to life.",
+            "pl_orbper": "<b>Orbital Period</b> shows that habitable planets around cool M-dwarf host stars reside in short orbits (under 100 days), whereas habitable candidates orbiting Sun-like stars have periods closer to 360 days. Non-habitable planets cover the entire span, showing a dense population of hot Jupiters and hot super-Earths with extremely short periods (under 10 days) that lie well inside the inner boundary of the Habitable Zone.",
+            "pl_eqt": "<b>Equilibrium Temperature</b> represents the stellar heating balance. Habitable planets are strictly confined to the 160 – 330 K range. Non-habitable worlds exhibit wide dispersion, including scorching close-in planets exceeding 1,000 K and frozen outer worlds. The 160–330 K range allows carbon-dioxide-water vapor feedback cycles to support liquid water on a solid surface.",
+            "pl_insol": "<b>Insolation Flux</b> represents the stellar energy received. Habitable planets require 0.3 to 1.8 times Earth's insolation. Exceeding 1.8 causes a runaway greenhouse effect (evaporating oceans, like Venus), while falling below 0.3 leads to global glaciation (like Mars, without strong greenhouse gases).",
+            "pl_orbeccen": "<b>Orbital Eccentricity</b> determines orbit circularity. Habitable candidates consistently have low eccentricity (<0.2), ensuring stable, continuous stellar flux year-round. Planets with highly eccentric orbits experience extreme seasonal swings, causing surface sterilization when passing close to the star and deep freezing when furthest away.",
+            "st_teff": "<b>Stellar Effective Temperature</b> shows habitable planets can orbit a wide range of stars, but are frequently discovered around cooler M-dwarfs (3,000-4,000 K) and Sun-like G-dwarfs (5,000-6,000 K). M-dwarf systems have narrow, close-in habitable zones, whereas hotter stars have wider, distant habitable zones.",
+            "st_rad": "<b>Stellar Radius</b> correlates directly with star luminosity. Smaller stars have lower energy output, requiring habitable planets to orbit very close to their host. This increases the likelihood of tidal locking, where one side of the planet permanently faces the star.",
+            "st_mass": "<b>Stellar Mass</b> dictates the star's evolutionary lifespan. Habitable candidates are typically found around low to intermediate mass stars (0.1 to 1.2 solar masses) because massive stars burn their fuel too rapidly (in millions rather than billions of years), exhausting their fuel before life can develop.",
+            "st_met": "<b>Stellar Metallicity</b> represents the fraction of heavy elements. Higher metallicity host stars indicate dust-rich protoplanetary disks, which facilitate rocky core accretion. Habitable planets occur across a range of metallicities, but tend to center near solar values.",
+            "sy_dist": "<b>System Distance</b> is an observational bias rather than a physical requirement. Habitable planets tend to be clustered closer to Earth (<500 parsecs) because small, terrestrial worlds are extremely difficult to detect at great distances with current transit or radial velocity instruments."
+        }
+        
+        with comp_tab1:
+            fig_comp_dist = px.histogram(
+                df_plot,
+                x=selected_comp_feat,
+                color="Habitability",
+                barmode="overlay",
+                histnorm="probability density",
+                color_discrete_map={"Non-Habitable": "#ef4444", "Habitable": "#10b981"},
+                title=f"Overlapping Density Distribution: {FEATURE_LABELS[selected_comp_feat]}",
+                labels={"Habitability": "Class"}
+            )
+            fig_comp_dist.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font_color="#f8fafc",
+                xaxis_title=FEATURE_LABELS[selected_comp_feat],
+                yaxis_title="Probability Density",
+                height=350
+            )
+            st.plotly_chart(fig_comp_dist, use_container_width=True)
+            
+        with comp_tab2:
+            fig_comp_box = px.box(
+                df_plot,
+                x="Habitability",
+                y=selected_comp_feat,
+                color="Habitability",
+                color_discrete_map={"Non-Habitable": "#ef4444", "Habitable": "#10b981"},
+                title=f"Box Plot: {FEATURE_LABELS[selected_comp_feat]} by Habitability Class",
+                points="outliers"
+            )
+            fig_comp_box.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font_color="#f8fafc",
+                yaxis_title=FEATURE_LABELS[selected_comp_feat],
+                height=350
+            )
+            st.plotly_chart(fig_comp_box, use_container_width=True)
+            
+        with comp_tab3:
+            fig_comp_viol = px.violin(
+                df_plot,
+                x="Habitability",
+                y=selected_comp_feat,
+                color="Habitability",
+                color_discrete_map={"Non-Habitable": "#ef4444", "Habitable": "#10b981"},
+                title=f"Violin Plot: {FEATURE_LABELS[selected_comp_feat]} by Habitability Class",
+                box=True,
+                points="all"
+            )
+            fig_comp_viol.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font_color="#f8fafc",
+                yaxis_title=FEATURE_LABELS[selected_comp_feat],
+                height=350
+            )
+            st.plotly_chart(fig_comp_viol, use_container_width=True)
+            
+        st.markdown(f"""
+        <div class='science-note'>
+            <b>🔬 How do habitable planets differ from non-habitable planets?</b><br>
+            <p style='margin-top: 5px; margin-bottom: 5px;'>
+                {interpretations.get(selected_comp_feat, "No detailed interpretation available for this feature.")}
+            </p>
+            <p style='margin-top: 5px; margin-bottom: 0px;'>
+                <b>Habitable Median:</b> {hab_vals.median():.4f} &nbsp;|&nbsp; 
+                <b>Non-Habitable Median:</b> {non_hab_vals.median():.4f}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # ----------------- Section 4: Correlation Analysis -----------------
+        st.write("#### 4. Correlation Analysis")
+        st.write("Examine linear relationships between physical variables in the catalog to detect coupled planetary and stellar processes.")
+        
+        corr_matrix = get_correlation_matrix(df_eda, SUPPORTED_EDA_FEATURES)
+        
+        col_corr1, col_corr2 = st.columns([3, 2])
+        
+        with col_corr1:
+            readable_labels = [FEATURE_LABELS[f] for f in SUPPORTED_EDA_FEATURES]
+            fig_corr = px.imshow(
+                corr_matrix,
+                labels=dict(color="Correlation"),
+                x=readable_labels,
+                y=readable_labels,
+                color_continuous_scale="RdBu",
+                zmin=-1,
+                zmax=1,
+                title="Interactive Feature Correlation Matrix"
+            )
+            fig_corr.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font_color="#f8fafc",
+                height=450,
+                xaxis=dict(tickangle=45),
+                margin=dict(l=40, r=40, t=50, b=40)
+            )
+            st.plotly_chart(fig_corr, use_container_width=True)
+            
+        with col_corr2:
+            st.markdown("""
+            <div class='science-note' style='padding: 1rem; margin-bottom: 1rem;'>
+                <h5>⚠️ Core Correlation Concept</h5>
+                <b>Correlation does not imply causation.</b> A high correlation value indicates that two variables change together, but does not prove one causes the other. For instance, distance to host star and orbital period are correlated due to orbital physics, not because distance generates the period.
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Extract top positive and negative correlations
+            corr_pairs = corr_matrix.unstack()
+            corr_pairs = corr_pairs[corr_pairs.index.get_level_values(0) != corr_pairs.index.get_level_values(1)]
+            
+            unique_pairs_list = []
+            seen = set()
+            for (f1, f2), val in corr_pairs.items():
+                pair = tuple(sorted([f1, f2]))
+                if pair not in seen:
+                    seen.add(pair)
+                    unique_pairs_list.append(((f1, f2), val))
+                    
+            unique_pairs_df = pd.DataFrame([
+                {"F1": p[0], "F2": p[1], "Correlation": val} for p, val in unique_pairs_list
+            ])
+            
+            top_pos = unique_pairs_df.sort_values(by="Correlation", ascending=False).head(5)
+            top_neg = unique_pairs_df.sort_values(by="Correlation", ascending=True).head(5)
+            
+            st.write("**Top 5 Positive Correlations**")
+            pos_table = pd.DataFrame({
+                "Parameter 1": [FEATURE_LABELS[f] for f in top_pos["F1"]],
+                "Parameter 2": [FEATURE_LABELS[f] for f in top_pos["F2"]],
+                "Correlation": [f"{val:+.4f}" for val in top_pos["Correlation"]]
+            })
+            st.dataframe(pos_table, use_container_width=True, hide_index=True)
+            
+            st.write("**Top 5 Negative Correlations**")
+            neg_table = pd.DataFrame({
+                "Parameter 1": [FEATURE_LABELS[f] for f in top_neg["F1"]],
+                "Parameter 2": [FEATURE_LABELS[f] for f in top_neg["F2"]],
+                "Correlation": [f"{val:+.4f}" for val in top_neg["Correlation"]]
+            })
+            st.dataframe(neg_table, use_container_width=True, hide_index=True)
+            
+        st.markdown("---")
+        
+        # ----------------- Section 5: Pairwise Relationships -----------------
+        st.write("#### 5. Pairwise Relationships Scatter Explorer")
+        st.write("Plot two physical attributes against each other to inspect exoplanet populations and identify multidimensional boundaries.")
+        
+        col_pair1, col_pair2 = st.columns(2)
+        with col_pair1:
+            x_scatter = st.selectbox(
+                "X-Axis Parameter",
+                SUPPORTED_EDA_FEATURES,
+                index=0,
+                format_func=lambda x: FEATURE_LABELS.get(x, x),
+                key="scatter_x"
+            )
+            log_x = st.checkbox("Log-scale X-Axis", value=False, key="scatter_log_x")
+            
+        with col_pair2:
+            y_scatter = st.selectbox(
+                "Y-Axis Parameter",
+                SUPPORTED_EDA_FEATURES,
+                index=1,
+                format_func=lambda x: FEATURE_LABELS.get(x, x),
+                key="scatter_y"
+            )
+            log_y = st.checkbox("Log-scale Y-Axis", value=False, key="scatter_log_y")
+            
+        fig_scatter = px.scatter(
+            df_plot,
+            x=x_scatter,
+            y=y_scatter,
+            color="Habitability",
+            color_discrete_map={"Non-Habitable": "#ef4444", "Habitable": "#10b981"},
+            title=f"Scatter Plot: {FEATURE_LABELS[x_scatter]} vs {FEATURE_LABELS[y_scatter]}",
+            hover_name="pl_name" if "pl_name" in df_plot.columns else None,
+            hover_data={
+                "Habitability": True,
+                x_scatter: ":.4f",
+                y_scatter: ":.4f"
+            }
+        )
+        
+        fig_scatter.update_layout(
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font_color="#f8fafc",
+            xaxis_title=FEATURE_LABELS[x_scatter],
+            yaxis_title=FEATURE_LABELS[y_scatter],
+            xaxis_type="log" if log_x else None,
+            yaxis_type="log" if log_y else None,
+            height=450
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
+        
+        st.markdown("---")
+        
+        # ----------------- Section 6: Scientific Insights -----------------
+        st.write("#### 6. Scientific Insights (Dynamically Calculated)")
+        st.write("These insights are computed in real-time from the active dataset to characterize properties of habitable candidates.")
+        
+        hab_df = df_eda[df_eda['is_habitable'] == 1]
+        non_hab_df = df_eda[df_eda['is_habitable'] == 0]
+        
+        avg_temp_hab = hab_df['pl_eqt'].mean()
+        avg_rad_hab = hab_df['pl_rade'].mean()
+        
+        q1_per = hab_df['pl_orbper'].quantile(0.25)
+        q3_per = hab_df['pl_orbper'].quantile(0.75)
+        
+        avg_steff_hab = hab_df['st_teff'].mean()
+        avg_steff_non = non_hab_df['st_teff'].mean()
+        avg_smet_hab = hab_df['st_met'].mean()
+        avg_smet_non = non_hab_df['st_met'].mean()
+        
+        col_in1, col_in2, col_in3 = st.columns(3)
+        
+        with col_in1:
+            st.markdown(f"""
+            <div class='metric-card' style='height: 100%;'>
+                <h5 style='color:#1E90FF;'>🌡️ Habitable Thermal Profile</h5>
+                <p style='margin-bottom:0.5rem;'><b>Average Equilibrium Temp:</b></p>
+                <div style='font-size: 1.8rem; font-weight: bold; color: #10b981;'>{avg_temp_hab:.1f} K</div>
+                <p style='color:#94a3b8; font-size: 0.85rem; margin-top:0.5rem;'>
+                    This thermal profile aligns with liquid water surface limits. By comparison, non-habitable worlds average <b>{non_hab_df['pl_eqt'].mean():.1f} K</b>, reflecting extreme hot and cold zones.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_in2:
+            st.markdown(f"""
+            <div class='metric-card' style='height: 100%;'>
+                <h5 style='color:#1E90FF;'>🌍 Habitable Physical Radius</h5>
+                <p style='margin-bottom:0.5rem;'><b>Average Planetary Radius:</b></p>
+                <div style='font-size: 1.8rem; font-weight: bold; color: #10b981;'>{avg_rad_hab:.2f} R<sub>⊕</sub></div>
+                <p style='color:#94a3b8; font-size: 0.85rem; margin-top:0.5rem;'>
+                    Terrestrial rocky surfaces are preserved. Non-habitable planets have an average radius of <b>{non_hab_df['pl_rade'].mean():.2f} R<sub>⊕</sub></b>, which is dominated by massive gaseous Jovian configurations.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_in3:
+            st.markdown(f"""
+            <div class='metric-card' style='height: 100%;'>
+                <h5 style='color:#1E90FF;'>⏳ Orbital Period Range</h5>
+                <p style='margin-bottom:0.5rem;'><b>Middle 50% Period Range (IQR):</b></p>
+                <div style='font-size: 1.3rem; font-weight: bold; color: #10b981;'>{q1_per:.1f} to {q3_per:.1f} days</div>
+                <p style='color:#94a3b8; font-size: 0.85rem; margin-top:0.5rem;'>
+                    The median orbital period is <b>{hab_df['pl_orbper'].median():.1f} days</b>. This demonstrates that many habitable candidates reside in close orbits around cool M-dwarf host stars.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        st.markdown(f"""
+        <div class='science-note' style='margin-top: 1rem;'>
+            <h5>☀️ Comparative Host Stellar Properties</h5>
+            Comparing host stars of habitable vs non-habitable systems:
+            <ul>
+                <li><b>Host Star Temperature:</b> Habitable hosts average <b>{avg_steff_hab:.1f} K</b> (typically late K and M dwarfs or solar G dwarfs) vs. non-habitable hosts which average <b>{avg_steff_non:.1f} K</b>.</li>
+                <li><b>Host Star Metallicity:</b> Habitable hosts average <b>{avg_smet_hab:+.3f} dex</b> compared to non-habitable hosts at <b>{avg_smet_non:+.3f} dex</b>. High metallicity increases solid accretion matter, facilitating rocky terrestrial cores.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # ----------------- Section 7: Export -----------------
+        st.write("#### 7. Export Data & Matrices")
+        st.write("Download the processed exoplanet catalog and correlation calculations for local scientific analysis.")
+        
+        col_ex1, col_ex2 = st.columns(2)
+        
+        with col_ex1:
+            csv_cleaned = df_eda.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Cleaned Dataset (CSV)",
+                data=csv_cleaned,
+                file_name="exoplanet_cleaned_dataset.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+            st.caption("Cleaned dataset containing exoplanet parameters with target habitability classifications (SMOTE-oversampling is NOT applied here; this is the raw, cleaned empirical database).")
+            
+        with col_ex2:
+            csv_corr = corr_matrix.to_csv().encode('utf-8')
+            st.download_button(
+                label="📥 Download Correlation Matrix (CSV)",
+                data=csv_corr,
+                file_name="exoplanet_correlation_matrix.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+            st.caption("Complete correlation coefficients matrix between all 11 supported planetary and stellar variables.")
+            
+    else:
+        st.warning("No exoplanet dataset available for analysis.")
+
+# =====================================================================
+# TAB 5: ABOUT PROJECT
+# =====================================================================
+with tab5:
     st.markdown("### 📖 About the ExoLife Project")
 
     # Dataset Stats Cards
     st.write("#### 🗄️ Dataset Overview")
+    
+    try:
+        df_stats = get_cleaned_data()
+        total_p_val = len(df_stats)
+        hab_p_val = int((df_stats['is_habitable'] == 1).sum())
+        non_hab_p_val = int((df_stats['is_habitable'] == 0).sum())
+        ratio_p_val = non_hab_p_val / hab_p_val if hab_p_val > 0 else 0
+        ratio_str = f"{ratio_p_val:.1f} : 1"
+    except Exception:
+        total_p_val, hab_p_val, non_hab_p_val, ratio_str = 3,757, 49, 3,708, "75.7 : 1"
+
     ds1, ds2, ds3, ds4, ds5 = st.columns(5)
     with ds1:
         st.markdown("<div class='dataset-stat'><div class='stat-value'>NASA</div><div class='stat-label'>Dataset Source — Exoplanet Archive</div></div>", unsafe_allow_html=True)
     with ds2:
-        st.markdown("<div class='dataset-stat'><div class='stat-value'>3,757</div><div class='stat-label'>Total Exoplanets (cleaned)</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='dataset-stat'><div class='stat-value'>{total_p_val:,}</div><div class='stat-label'>Total Exoplanets (cleaned)</div></div>", unsafe_allow_html=True)
     with ds3:
-        st.markdown("<div class='dataset-stat'><div class='stat-value'>49</div><div class='stat-label'>Potentially Habitable</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='dataset-stat'><div class='stat-value'>{hab_p_val}</div><div class='stat-label'>Potentially Habitable</div></div>", unsafe_allow_html=True)
     with ds4:
-        st.markdown("<div class='dataset-stat'><div class='stat-value'>3,708</div><div class='stat-label'>Non-Habitable</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='dataset-stat'><div class='stat-value'>{non_hab_p_val:,}</div><div class='stat-label'>Non-Habitable</div></div>", unsafe_allow_html=True)
     with ds5:
-        st.markdown("<div class='dataset-stat'><div class='stat-value'>75.7 : 1</div><div class='stat-label'>Class Imbalance Ratio</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='dataset-stat'><div class='stat-value'>{ratio_str}</div><div class='stat-label'>Class Imbalance Ratio</div></div>", unsafe_allow_html=True)
 
     st.markdown("---")
 
