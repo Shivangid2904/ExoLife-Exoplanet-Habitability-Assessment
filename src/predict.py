@@ -96,3 +96,35 @@ def predict(input_data, model_mode="baseline"):
     prediction = model.predict(input_sliced)[0]
     return prediction
 
+def predict_proba(input_data, model_mode="baseline"):
+    """
+    Runs model inference on input features and returns the probability of class 1 (habitable).
+    """
+    from src.preprocess import BASELINE_FEATURES, PROXY_FEATURES
+
+    model = load_model(model_mode)
+    
+    # Determine correct feature set
+    if model_mode == "proxy":
+        features = PROXY_FEATURES
+    else:
+        features = BASELINE_FEATURES
+
+    # Convert input to DataFrame
+    if not isinstance(input_data, pd.DataFrame):
+        input_df = pd.DataFrame([input_data])
+    else:
+        input_df = input_data
+    
+    # Check for missing features
+    missing_features = [f for f in features if f not in input_df.columns]
+    if missing_features:
+        raise ValueError(f"Input data is missing features required for '{model_mode}' mode: {missing_features}")
+        
+    input_sliced = input_df[features]
+    
+    # Run predict_proba through the pipeline (which handles SMOTE internally)
+    proba = model.predict_proba(input_sliced)[0][1]
+    return proba
+
+
