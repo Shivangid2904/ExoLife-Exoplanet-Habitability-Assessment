@@ -224,7 +224,29 @@ presets = {
 
 st.sidebar.markdown("**🌍 Habitable Candidates:** Earth, Kepler-22b, Kepler-186f")
 st.sidebar.markdown("**🔥 Non-Habitable Examples:** Mars, Kepler-10b")
-selected_preset = st.sidebar.selectbox("Load Exoplanet Preset", list(presets.keys()))
+
+# Callback to update the session state values when a preset is selected
+def on_preset_change():
+    preset_data = presets[st.session_state.preset_selector]
+    if preset_data is not None:
+        st.session_state.val_pl_rade = float(preset_data.get("pl_rade", 1.0))
+        st.session_state.val_pl_eqt = float(preset_data.get("pl_eqt", 288.0))
+        st.session_state.val_pl_insol = float(preset_data.get("pl_insol", 1.0))
+        st.session_state.val_pl_bmasse = float(preset_data.get("pl_bmasse", 1.0))
+        st.session_state.val_pl_orbper = float(preset_data.get("pl_orbper", 365.25))
+        st.session_state.val_pl_orbeccen = float(preset_data.get("pl_orbeccen", 0.0))
+        st.session_state.val_st_teff = float(preset_data.get("st_teff", 5778.0))
+        st.session_state.val_st_rad = float(preset_data.get("st_rad", 1.0))
+        st.session_state.val_st_mass = float(preset_data.get("st_mass", 1.0))
+        st.session_state.val_st_met = float(preset_data.get("st_met", 0.0))
+        st.session_state.val_sy_dist = float(preset_data.get("sy_dist", 0.0))
+
+selected_preset = st.sidebar.selectbox(
+    "Load Exoplanet Preset", 
+    list(presets.keys()), 
+    key="preset_selector", 
+    on_change=on_preset_change
+)
 preset_data = presets[selected_preset]
 
 def get_val(key, default):
