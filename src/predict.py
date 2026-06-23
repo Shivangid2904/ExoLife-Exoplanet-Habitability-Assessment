@@ -49,15 +49,7 @@ def load_model(model_mode="baseline"):
                 if os.path.exists(fallback_path):
                     model_path = fallback_path
                 else:
-                    # Backward compatibility fallback for baseline (try original model.pkl)
-                    if model_mode == "baseline":
-                        fallback_original = os.path.join(base_dir, "models", "model.pkl")
-                        if os.path.exists(fallback_original):
-                            model_path = fallback_original
-                        else:
-                            raise FileNotFoundError(f"Trained baseline model not found. Checked: {model_path}, {alternative_path}, {fallback_path}, {fallback_original}")
-                    else:
-                        raise FileNotFoundError(f"Trained proxy model not found. Checked: {model_path}, {alternative_path}, {fallback_path}")
+                    raise FileNotFoundError(f"Trained {model_mode} model not found. Checked: {model_path}, {alternative_path}, {fallback_path}")
         
         _models[model_mode] = joblib.load(model_path)
     

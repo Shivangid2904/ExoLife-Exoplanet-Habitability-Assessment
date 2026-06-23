@@ -287,28 +287,42 @@ ExoLife/
 ├── app.py
 ├── requirements.txt
 ├── README.md
+├── .gitignore
+├── cleanup_report.md
 
 ├── src/
-│   ├── eda.py
 │   ├── preprocess.py
 │   ├── train.py
 │   ├── evaluate.py
 │   ├── explain.py
-│   └── predict.py
+│   ├── predict.py
+│   └── benchmark.py
 
 ├── data/
 │   ├── raw/
+│   │   └── exoplanetdata.csv
 │   └── processed/
 
 ├── models/
-│   ├── rf_model.pkl
-│   ├── scaler.pkl
-│   └── explainer.pkl
+│   ├── model_baseline.pkl
+│   ├── model_proxy.pkl
+│   ├── metrics_comparison.json
+│   ├── feature_importance_baseline.csv
+│   └── feature_importance_proxy.csv
 
 ├── outputs/
 │   ├── eda/
 │   ├── evaluation/
-│   └── shap/
+│   │   ├── confusion_matrix_baseline.png
+│   │   └── confusion_matrix_proxy.png
+│   ├── shap/
+│   │   ├── shap_summary_baseline.png
+│   │   ├── shap_summary_proxy.png
+│   │   └── shap_explanation.html
+│   └── benchmark/
+│       ├── benchmark_results.csv
+│       ├── cross_validation_results.csv
+│       └── feature_importance_comparison.csv
 
 └── assets/
     └── screenshots/
