@@ -1,0 +1,7 @@
+{
+    "holdout_accuracy": 0.9986702127659575,
+    "holdout_precision": 1.0,
+    "holdout_recall": 0.9,
+    "holdout_f1": 0.9473684210526316,
+    "cv_mean_f1": 0.9043018419489007
+}

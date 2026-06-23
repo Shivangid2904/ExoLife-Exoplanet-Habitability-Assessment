@@ -1,11 +1,10 @@
 import streamlit as st
-import joblib
-from predict import predict
-from explain import explain_prediction, export_html_explanation
-from preprocess import load_and_clean_data  # Needed for global SHAP
+from src.predict import predict, load_model
+from src.explain import explain_prediction, export_html_explanation
+from src.preprocess import load_and_clean_data  # Needed for global SHAP
 
-# Load the model once at startup
-model = joblib.load("models/model.pkl")
+# Load the model once at startup (utilizes consolidated lazy-loader)
+model = load_model()
 
 st.title("🪐 Exoplanet Habitability Predictor")
 
