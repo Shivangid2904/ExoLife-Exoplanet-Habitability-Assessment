@@ -1,281 +1,100 @@
-# ExoLife – AI-Powered Exoplanet Habitability Assessment Platform
+# ExoLife: Exoplanet Habitability Assessment Platform
 
-## Overview
+An AI-powered web application that predicts the potential habitability of exoplanets using machine learning, explainable AI, and scientific benchmarking techniques.
 
-ExoLife is an end-to-end Data Science and Machine Learning platform designed to assess the potential habitability of exoplanets using data from the NASA Exoplanet Archive. The project combines data preprocessing, exploratory data analysis, machine learning, explainable AI, and interactive deployment to provide interpretable habitability assessments.
-
-Rather than manually analyzing thousands of discovered exoplanets, ExoLife automates the evaluation process by leveraging planetary and stellar characteristics to identify planets that may support conditions favorable for life.
+Built using NASA Exoplanet Archive data, ExoLife combines predictive modeling, SHAP explainability, exploratory data analysis, and multi-model benchmarking into a single interactive platform.
 
 ---
 
-## Problem Statement
+## Live Demo
 
-Thousands of exoplanets have been discovered by modern telescopes, making manual habitability assessment increasingly difficult.
-
-The objective of ExoLife is to build an explainable machine learning framework that evaluates exoplanet habitability using scientific criteria and provides transparent predictions through interpretable AI techniques.
+https://exolife-exoplanet-habitability-assessment.streamlit.app/
 
 ---
 
-## Objectives
+## Features
 
-* Analyze exoplanet and stellar data from the NASA Exoplanet Archive.
-* Perform comprehensive Exploratory Data Analysis (EDA).
-* Build and compare multiple machine learning models.
-* Handle class imbalance using advanced resampling techniques.
-* Explain model predictions using SHAP.
-* Generate interpretable habitability scores.
-* Deploy an interactive web application for real-time assessment.
+### Habitability Assessment
+- Predicts whether an exoplanet is potentially habitable
+- Supports manual parameter input
+- Includes Earth, Mars, Kepler-22b, and Kepler-186f presets
+- Dual-model framework:
+  - Baseline Model (All Features)
+  - Physics-Informed Proxy Model
+
+### Explainable AI (SHAP)
+- Local prediction explanations using SHAP
+- Waterfall visualizations showing feature contributions
+- Scientific interpretation of prediction drivers
+
+### Exploratory Data Analysis
+- Dataset quality assessment
+- Class imbalance analysis
+- Feature distributions
+- Correlation analysis
+- Habitability trend exploration
+
+### Model Benchmarking & Validation
+- Logistic Regression
+- Decision Tree
+- Random Forest
+- XGBoost
+- Physics-Informed Proxy Random Forest
+
+Includes:
+- Accuracy
+- Precision
+- Recall
+- F1 Score
+- ROC-AUC
+- PR-AUC
+- Confusion Matrix Analysis
+- Stratified 5-Fold Cross Validation
+- Feature Importance Comparison
 
 ---
 
 ## Dataset
 
-**Source:** NASA Exoplanet Archive
+Source: NASA Exoplanet Archive
 
-### Features Used
+After preprocessing:
 
-| Feature     | Description                   |
-| ----------- | ----------------------------- |
-| pl_rade     | Planet Radius                 |
-| pl_bmasse   | Planet Mass                   |
-| pl_orbper   | Orbital Period                |
-| pl_eqt      | Equilibrium Temperature       |
-| pl_insol    | Insolation Flux               |
-| pl_orbeccen | Orbital Eccentricity          |
-| st_teff     | Stellar Effective Temperature |
-| st_rad      | Stellar Radius                |
-| st_mass     | Stellar Mass                  |
-| st_met      | Stellar Metallicity           |
-| sy_dist     | Distance from Earth           |
+| Metric | Value |
+|----------|----------|
+| Total Planets | 3,757 |
+| Habitable | 49 |
+| Non-Habitable | 3,708 |
+| Imbalance Ratio | 75.7 : 1 |
 
 ---
 
-## Project Workflow
-
-NASA Exoplanet Dataset
-↓
-Data Cleaning & Preprocessing
-↓
-Exploratory Data Analysis (EDA)
-↓
-Feature Engineering
-↓
-Habitability Label Generation
-↓
-Class Imbalance Analysis (SMOTE)
-↓
-Model Training & Comparison
-↓
-Model Evaluation
-↓
-SHAP Explainability
-↓
-Habitability Score Generation
-↓
-Streamlit Deployment
-
----
-
-## Exploratory Data Analysis (EDA)
-
-### Analysis Performed
-
-* Planet Radius Distribution
-* Planet Mass Distribution
-* Orbital Period Distribution
-* Equilibrium Temperature Distribution
-* Insolation Flux Distribution
-* Correlation Heatmaps
-* Statistical Summary Analysis
-* Habitability Class Distribution
-
-### Key Questions
-
-* What characteristics are common among potentially habitable planets?
-* Which features are strongly correlated?
-* How severe is class imbalance?
-* Which planetary properties influence habitability the most?
-
----
-
-## Data Preprocessing
-
-### Steps Performed
-
-* Loaded NASA dataset from the correct header row.
-* Selected scientifically relevant planetary and stellar features.
-* Removed records containing missing values.
-* Applied feature scaling using StandardScaler.
-* Generated habitability labels using astrophysical criteria.
-
----
-
-## Habitability Criteria
-
-A planet is labeled as potentially habitable if:
-
-* Planet Radius between 0.5 and 2.5 Earth radii
-* Equilibrium Temperature between 180 K and 310 K
-* Insolation Flux between 0.3 and 1.8 Earth flux units
-
-Classification:
-
-* 1 → Potentially Habitable
-* 0 → Non-Habitable
-
----
-
-## Class Imbalance Handling
-
-The dataset contains significantly fewer habitable planets than non-habitable planets.
-
-To address this issue:
-
-* Analyzed class distributions.
-* Applied SMOTE (Synthetic Minority Over-sampling Technique).
-* Compared model performance before and after balancing.
-* Evaluated final performance on the original test set.
-
-This helps reduce bias toward the majority class and improves model generalization.
-
----
-
-## Machine Learning Models
-
-Three models are trained and compared.
-
-### Logistic Regression
-
-Used as a baseline model.
-
-### Decision Tree
-
-Provides interpretability and nonlinear decision boundaries.
-
-### Random Forest
-
-Selected as the primary model because it:
-
-* Handles nonlinear relationships effectively.
-* Reduces overfitting through ensemble learning.
-* Performs well on structured tabular data.
-* Supports feature importance analysis.
-
----
-
-## Model Evaluation
-
-Models are evaluated using:
-
-* Accuracy
-* Precision
-* Recall
-* F1 Score
-* ROC-AUC Score
-
-### Evaluation Visualizations
-
-* Confusion Matrix
-* ROC Curves
-* Model Comparison Table
-* Feature Importance Analysis
-
-The best-performing model is selected based on overall predictive performance rather than accuracy alone.
-
----
-
-## Explainable AI (XAI)
-
-ExoLife integrates SHAP (SHapley Additive Explanations) to improve transparency and interpretability.
-
-### Global Explanations
-
-Used to identify:
-
-* Most influential features
-* Overall model behavior
-* Feature importance rankings
-
-### Local Explanations
-
-Used to explain:
-
-* Individual planet predictions
-* Why a planet was classified as habitable or non-habitable
-
-### SHAP Visualizations
-
-* Summary Plot
-* Beeswarm Plot
-* Waterfall Plot
-* Force Plot
-
----
-
-## Habitability Score System
-
-Instead of providing only a binary prediction, ExoLife generates a Habitability Score.
-
-### Score Categories
-
-| Score Range | Classification     |
-| ----------- | ------------------ |
-| 0–39%       | Low Potential      |
-| 40–69%      | Moderate Potential |
-| 70–100%     | High Potential     |
-
-This provides a more intuitive interpretation of model predictions.
-
----
-
-## Streamlit Application
-
-### Features
-
-* Interactive user interface
-* Real-time habitability assessment
-* Habitability score generation
-* SHAP-based explanations
-* Data exploration dashboard
-* Model performance overview
-
----
-
-## Technology Stack
-
-### Programming Language
-
-* Python
-
-### Data Analysis
-
-* Pandas
-* NumPy
-
-### Machine Learning
-
-* Scikit-Learn
-* Imbalanced-Learn
-
-### Explainable AI
-
-* SHAP
-
-### Visualization
-
-* Matplotlib
-* Seaborn
-* Plotly
-
-### Deployment
-
-* Streamlit
-
-### Development Tools
-
-* VS Code
-* Git
-* GitHub
+## Machine Learning Pipeline
+
+### Baseline Model
+Uses all available planetary and stellar parameters.
+
+### Physics-Informed Proxy Model
+Uses indirect physical indicators to avoid target leakage:
+
+```python
+PROXY_FEATURES = [
+    "pl_bmasse",
+    "pl_orbper",
+    "pl_orbeccen",
+    "st_teff",
+    "st_rad",
+    "st_mass",
+    "st_met",
+    "sy_dist"
+]
+```
+
+Purpose:
+
+* Prevent target leakage
+* Encourage learning of underlying astrophysical relationships
+* Improve scientific validity
 
 ---
 
@@ -330,41 +149,118 @@ ExoLife/
 
 ---
 
-## Key Learning Outcomes
+## Benchmark Results
 
-* Data Cleaning and Preprocessing
-* Exploratory Data Analysis
-* Feature Engineering
-* Handling Imbalanced Datasets
-* Model Comparison and Selection
-* Explainable AI using SHAP
-* Machine Learning Evaluation Metrics
-* Streamlit Application Development
-* End-to-End ML Pipeline Design
-* Project Structuring and Deployment
+| Model               | Accuracy | Precision | Recall | F1 Score | PR-AUC |
+| ------------------- | -------- | --------- | ------ | -------- | ------ |
+| Proxy RF            | 0.989    | 0.583     | 0.700  | 0.636    | 0.695  |
+| Logistic Regression | 0.918    | 0.139     | 1.000  | 0.244    | 0.279  |
+| Decision Tree       | 0.992    | 0.700     | 0.700  | 0.700    | 0.702  |
+| Random Forest       | 0.989    | 0.583     | 0.700  | 0.636    | 0.695  |
+| XGBoost             | 0.992    | 0.750     | 0.600  | 0.667    | 0.773  |
 
 ---
 
-## Limitations
+## Recommended Model
 
-* Habitability labels are generated using established astrophysical thresholds rather than direct evidence of life.
-* Atmospheric composition and planetary geology are not considered.
-* The model should be interpreted as a habitability assessment framework rather than a definitive predictor of extraterrestrial life.
-* Results depend on currently available exoplanet observations and may evolve as new discoveries are made.
+XGBoost demonstrated the strongest overall performance based on:
+
+* Highest PR-AUC (0.773)
+* Best cross-validation F1 score
+* Strong generalization performance
+* Lowest validation variance
+
+Cross-Validation Results:
+
+| Metric       | Value           |
+| ------------ | --------------- |
+| CV Accuracy  | 0.9862 ± 0.0032 |
+| CV Precision | 0.5107 ± 0.1223 |
+| CV Recall    | 0.7356 ± 0.0997 |
+| CV F1        | 0.5858 ± 0.0435 |
 
 ---
 
-## Future Enhancements
+## Technologies Used
 
-* Experiment with XGBoost and Gradient Boosting models.
-* Add hyperparameter optimization.
-* Integrate real-time NASA API data.
-* Incorporate atmospheric composition features.
-* Expand explainability using feature interaction analysis.
-* Deploy using cloud infrastructure for scalability.
+### Machine Learning
+
+* Scikit-Learn
+* XGBoost
+* Imbalanced-Learn (SMOTE)
+
+### Explainable AI
+
+* SHAP
+
+### Data Analysis
+
+* Pandas
+* NumPy
+* SciPy
+
+### Visualization
+
+* Plotly
+* Matplotlib
+* Seaborn
+
+### Deployment
+
+* Streamlit
 
 ---
 
-## Conclusion
+## Screenshots
 
-ExoLife demonstrates a complete Data Science workflow from raw NASA exoplanet data to explainable machine learning predictions and interactive deployment. By combining exploratory data analysis, class imbalance handling, model comparison, SHAP explainability, and Streamlit deployment, the platform provides a transparent and scientifically grounded framework for exoplanet habitability assessment.
+### Habitability Assessment
+
+[Insert Screenshot]
+
+### Explainable AI (SHAP)
+
+[Insert Screenshot]
+
+### Exploratory Data Analysis
+
+[Insert Screenshot]
+
+### Model Benchmarking
+
+[Insert Screenshot]
+
+---
+
+## Scientific Considerations
+
+The dataset is highly imbalanced, with only 1.3% of planets classified as habitable.
+
+A naïve classifier predicting every planet as non-habitable would achieve approximately 98.7% accuracy while failing to identify any habitable candidates.
+
+For this reason, ExoLife emphasizes:
+
+* Recall
+* F1 Score
+* PR-AUC
+* Cross-Validation Stability
+
+as primary evaluation metrics.
+
+---
+
+## Future Work
+
+* Deep learning approaches for habitability prediction
+* Bayesian uncertainty estimation
+* Automated feature engineering
+* Real-time NASA archive integration
+* Multi-class habitability scoring
+* Planet similarity search
+
+---
+
+## Author
+
+**Shivangi Dubey**  
+B.Tech Computer Science & Engineering (AI & ML)  
+SRM University AP  
