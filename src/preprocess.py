@@ -1,6 +1,16 @@
 import pandas as pd
 import os
 
+# Feature sets for the dual-model framework
+BASELINE_FEATURES = [
+    "pl_rade", "pl_bmasse", "pl_orbper", "pl_eqt", "pl_insol",
+    "pl_orbeccen", "st_teff", "st_rad", "st_mass", "st_met", "sy_dist"
+]
+
+PROXY_FEATURES = [
+    "pl_bmasse", "pl_orbper", "pl_orbeccen", "st_teff", "st_rad", "st_mass", "st_met", "sy_dist"
+]
+
 def load_and_clean_data(filepath="data/raw/exoplanetdata.csv"):
     """
     Loads and cleans exoplanet data from NASA Exoplanet Archive.
@@ -17,11 +27,8 @@ def load_and_clean_data(filepath="data/raw/exoplanetdata.csv"):
     # Header starts from row 89 (index 88)
     df = pd.read_csv(filepath, header=88)
 
-    required_columns = [
-        "pl_rade", "pl_bmasse", "pl_orbper", "pl_eqt", "pl_insol",
-        "pl_orbeccen", "st_teff", "st_rad", "st_mass", "st_met", "sy_dist"
-    ]
-    df = df.dropna(subset=required_columns)
+    # Drop rows missing any baseline features (which covers proxy features too)
+    df = df.dropna(subset=BASELINE_FEATURES)
 
     # Classify habitability based on planetary radius, equilibrium temp, and insolation flux
     df['is_habitable'] = (
@@ -31,3 +38,4 @@ def load_and_clean_data(filepath="data/raw/exoplanetdata.csv"):
     ).astype(int)
 
     return df
+
