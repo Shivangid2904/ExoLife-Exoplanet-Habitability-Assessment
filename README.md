@@ -97,7 +97,25 @@ Purpose:
 * Improve scientific validity
 
 ---
+## Why Two Models?
 
+### Baseline Model
+
+The Baseline Model uses all available planetary and stellar parameters, including planet radius, equilibrium temperature, and insolation flux. Since these features are directly related to the rule-based habitability criteria used to generate labels, the model achieves very high predictive performance.
+
+### Physics-Informed Proxy Model
+
+The Physics-Informed Proxy Model excludes the three direct labeling features:
+
+- `pl_rade` (Planet Radius)
+- `pl_eqt` (Equilibrium Temperature)
+- `pl_insol` (Insolation Flux)
+
+This design reduces target leakage and forces the model to infer habitability using indirect astrophysical indicators such as orbital dynamics and stellar properties.
+
+The objective is to validate whether machine learning models can learn meaningful physical relationships rather than simply reproducing the labeling rules used to create the target variable.
+
+Despite this constraint, the proxy model achieves strong performance (F1 Score: 0.636), demonstrating that underlying astrophysical patterns remain informative for habitability assessment.
 ## Project Structure
 
 ```text
@@ -249,6 +267,17 @@ For this reason, ExoLife emphasizes:
 
 as primary evaluation metrics.
 
+---
+
+## Limitations
+
+- Habitability labels are generated using astrophysical threshold-based criteria and do not represent confirmed evidence of extraterrestrial life.
+- The platform should be interpreted as an automated habitability assessment framework rather than a definitive predictor of planetary habitability.
+- Atmospheric composition, magnetic field strength, geological activity, cloud dynamics, and other complex planetary factors are not incorporated into the current model.
+- Model performance depends on the quality, completeness, and availability of measurements within the NASA Exoplanet Archive dataset.
+- The dataset contains a severe class imbalance (49 habitable planets out of 3,757 total planets), which introduces uncertainty when generalizing to newly discovered exoplanets.
+- SMOTE-generated synthetic samples are used during model benchmarking to mitigate class imbalance and may not perfectly represent real planetary distributions.
+- Results should be interpreted as probabilistic assessments of habitability potential rather than direct indicators of life.
 ---
 
 ## Future Work
