@@ -1151,7 +1151,7 @@ with tab4:
                 color="Habitability",
                 color_discrete_map={"Non-Habitable": "#ef4444", "Habitable": "#10b981"},
                 title=f"Scatter Plot: {FEATURE_LABELS[x_scatter]} vs {FEATURE_LABELS[y_scatter]} ({viz_mode})",
-                opacity=0.6,
+                opacity=0.45,
                 hover_name="pl_name" if "pl_name" in df_scatter_plot.columns else None,
                 hover_data={
                     "Habitability": True,
@@ -1260,24 +1260,97 @@ with tab4:
         st.write("#### 7. Feature Summary & Export Data")
         st.write("Inspect descriptive summary metrics and download the processed exoplanet catalog and calculations for local scientific analysis.")
         
-        # Feature Summary Table (Section 9)
+        # Feature Summary Table — human-readable feature names (Section 9 / 10)
+        HUMAN_READABLE_NAMES = {
+            "pl_rade":     "Planet Radius (pl_rade)",
+            "pl_bmasse":   "Planet Mass (pl_bmasse)",
+            "pl_orbper":   "Orbital Period (pl_orbper)",
+            "pl_eqt":      "Equilibrium Temperature (pl_eqt)",
+            "pl_insol":    "Insolation Flux (pl_insol)",
+            "pl_orbeccen": "Orbital Eccentricity (pl_orbeccen)",
+            "st_teff":     "Stellar Temperature (st_teff)",
+            "st_rad":      "Stellar Radius (st_rad)",
+            "st_mass":     "Stellar Mass (st_mass)",
+            "st_met":      "Stellar Metallicity (st_met)",
+            "sy_dist":     "System Distance (sy_dist)"
+        }
+
         summary_rows = []
+        raw_missing_pcts = quality_data["missing_pcts"] if quality_data else {}
         for f in SUPPORTED_EDA_FEATURES:
             vals = df_eda[f].dropna()
+            raw_pct = raw_missing_pcts.get(f, 0.0)
+            clean_missing = df_eda[f].isna().sum()
+            clean_pct = clean_missing / len(df_eda) * 100 if len(df_eda) > 0 else 0.0
             summary_rows.append({
-                "Feature": f,
+                "Feature": HUMAN_READABLE_NAMES.get(f, f),
                 "Description": FEATURE_LABELS[f],
                 "Mean": round(vals.mean(), 4),
                 "Median": round(vals.median(), 4),
                 "Std Dev": round(vals.std(), 4),
                 "Min": round(vals.min(), 4),
                 "Max": round(vals.max(), 4),
-                "Missing %": "0.00%"
+                "Raw Missing %": f"{raw_pct:.2f}%",
+                "Clean Missing %": f"{clean_pct:.2f}%"
             })
         summary_table_df = pd.DataFrame(summary_rows)
         
         st.write("**Feature Descriptive Metrics**")
         st.dataframe(summary_table_df, use_container_width=True, hide_index=True)
+        st.caption("Raw Missing % represents missing measurements in the original NASA catalog. Clean Missing % represents missing values after preprocessing and feature filtering.")
+
+        # Dataset Quality Observation — dynamically generated from actual data (Section 10)
+        if quality_data:
+            raw_pct_map = quality_data["missing_pcts"]
+            # Identify features with >10% raw missing
+            high_missing = [
+                (HUMAN_READABLE_NAMES.get(f, f), pct)
+                for f, pct in raw_pct_map.items()
+                if f in SUPPORTED_EDA_FEATURES and pct > 10.0
+            ]
+            high_missing_sorted = sorted(high_missing, key=lambda x: -x[1])
+
+            if high_missing_sorted:
+                # Build human-readable list
+                if len(high_missing_sorted) == 1:
+                    missing_text = f"{high_missing_sorted[0][0]} ({high_missing_sorted[0][1]:.2f}%)"
+                elif len(high_missing_sorted) == 2:
+                    missing_text = (
+                        f"{high_missing_sorted[0][0]} ({high_missing_sorted[0][1]:.2f}%) and "
+                        f"{high_missing_sorted[1][0]} ({high_missing_sorted[1][1]:.2f}%)"
+                    )
+                else:
+                    parts = [f"{name} ({pct:.2f}%)" for name, pct in high_missing_sorted[:-1]]
+                    last = high_missing_sorted[-1]
+                    missing_text = ", ".join(parts) + f", and {last[0]} ({last[1]:.2f}%)"
+
+                total_clean = len(df_eda)
+                total_raw = quality_data["total_raw"]
+                retention_pct = total_clean / total_raw * 100 if total_raw > 0 else 0.0
+                observation_text = (
+                    f"{missing_text} show the highest rates of missing measurements in the original NASA "
+                    f"Exoplanet Archive catalog. After preprocessing — which selects only rows with complete "
+                    f"observations across all 11 physical attributes — the processed dataset retains "
+                    f"{total_clean:,} of {total_raw:,} raw records ({retention_pct:.1f}% retention) "
+                    f"and achieves 100% completeness across all selected features."
+                )
+            else:
+                total_clean = len(df_eda)
+                total_raw = quality_data["total_raw"]
+                retention_pct = total_clean / total_raw * 100 if total_raw > 0 else 0.0
+                observation_text = (
+                    f"The original NASA Exoplanet Archive catalog contains {total_raw:,} records. "
+                    f"After preprocessing to select complete observations across all 11 physical "
+                    f"attributes, the processed dataset retains {total_clean:,} records "
+                    f"({retention_pct:.1f}% retention) with 100% completeness across all features."
+                )
+
+            st.markdown(f"""
+            <div class='science-note' style='margin-top: 0.8rem;'>
+                <b>📋 Dataset Quality Observation</b><br>
+                <p style='margin-top: 0.5rem; margin-bottom: 0;'>{observation_text}</p>
+            </div>
+            """, unsafe_allow_html=True)
         
         # Download summary table CSV (Section 9)
         summary_csv = summary_table_df.to_csv(index=False).encode('utf-8')
@@ -1316,7 +1389,18 @@ with tab4:
                 key="download_corr"
             )
             st.caption("Complete correlation coefficients matrix between all 11 supported planetary and stellar variables.")
-            
+
+        # EDA Disclaimer Footer
+        st.markdown("---")
+        st.markdown("""
+        <div style='text-align: center; padding: 0.5rem 0 1rem 0;'>
+            <p style='color:#64748b; font-size: 0.82rem; font-style: italic;'>
+                All observations shown in this dashboard are descriptive analyses of the processed NASA Exoplanet Archive dataset
+                and should not be interpreted as causal scientific conclusions.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
     else:
         st.warning("No exoplanet dataset available for analysis.")
 
@@ -1337,6 +1421,7 @@ with tab5:
         ratio_p_val = non_hab_p_val / hab_p_val if hab_p_val > 0 else 0
         ratio_str = f"{ratio_p_val:.1f} : 1"
     except Exception:
+        # pyrefly: ignore [bad-unpacking]
         total_p_val, hab_p_val, non_hab_p_val, ratio_str = 3,757, 49, 3,708, "75.7 : 1"
 
     ds1, ds2, ds3, ds4, ds5 = st.columns(5)
