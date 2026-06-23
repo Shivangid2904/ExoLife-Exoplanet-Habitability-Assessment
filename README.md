@@ -8,7 +8,7 @@ Built using NASA Exoplanet Archive data, ExoLife combines predictive modeling, S
 
 ## Live Demo
 
-https://exolife-exoplanet-habitability-assessment.streamlit.app/
+[https://exolife-exoplanet-habitability-assessment.streamlit.app/](https://exolife-exoplanet-habitability.onrender.com/)
 
 ---
 
